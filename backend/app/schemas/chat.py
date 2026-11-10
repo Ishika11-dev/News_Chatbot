@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 class SourceCitation(BaseModel):
     title: str
@@ -20,5 +20,5 @@ class ChatResponse(BaseModel):
     answer: str
     sources: List[SourceCitation] = []
     session_id: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

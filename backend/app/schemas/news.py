@@ -32,7 +32,7 @@ class CleanedArticle(BaseModel):
     article_url: str
     author: Optional[str] = None
     image_url: Optional[str] = None
-    ingested_at: datetime = Field(default_factory=datetime.utcnow)
+    ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ArticleChunk(BaseModel):
     chunk_id: str
