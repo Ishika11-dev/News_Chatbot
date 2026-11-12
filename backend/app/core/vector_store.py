@@ -11,12 +11,22 @@ from app.utils.logger import logger
 class QdrantNewsStore:
     """Manages Qdrant vector storage, indexing, 30-day filtered queries, and expiration purge."""
 
+    _instance = None
     NAMESPACE_UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
 
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(QdrantNewsStore, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if getattr(self, "_initialized", False):
+            return
         self.collection_name = settings.QDRANT_COLLECTION_NAME
         self.client = self._init_client()
         self._ensure_collection_and_indexes()
+        self._initialized = True
 
     def _init_client(self) -> QdrantClient:
         """Initializes Qdrant client in remote server mode or local on-disk mode."""
