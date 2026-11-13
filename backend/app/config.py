@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     # Gemini AI
     GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key")
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini Chat Model")
-    GEMINI_EMBEDDING_MODEL: str = Field(default="text-embedding-004", description="Embedding Model")
-    EMBEDDING_DIMENSION: int = 768
+    GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Embedding Model")
+    EMBEDDING_DIMENSION: int = 3072
 
     # Vector DB (Qdrant)
     QDRANT_URL: str | None = None
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # RAG Settings
     TOP_K_RETRIEVAL: int = 6
-    SIMILARITY_THRESHOLD: float = 0.45
+    SIMILARITY_THRESHOLD: float = 0.30
 
 settings = Settings()
 
