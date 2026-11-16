@@ -210,6 +210,27 @@ class LangChainNewsRAG:
             "retrieved_count": len(retrieved_docs)
         }
 
+    def stream_answer(self, question: str, top_k: int = 5, category: Optional[str] = None):
+        """
+        Streams response tokens in SSE format:
+        yields {"token": "..."} as generated, then {"sources": [...]} at the end, and finally "[DONE]".
+        """
+        retrieved_docs = self.retrieve_recent_docs(query=question, top_k=top_k, category=category)
+        formatted_context, sources = format_docs_with_citations(retrieved_docs)
+
+        if not retrieved_docs:
+            yield f"data: {json.dumps({'token': 'I do not have verified news from the past 30 days to answer this question.'})}\n\n"
+            yield f"data: {json.dumps({'sources': []})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        rag_chain = PROMPT_TEMPLATE | self.llm | StrOutputParser()
+        for token in rag_chain.stream({"context": formatted_context, "question": question}):
+            yield f"data: {json.dumps({'token': token})}\n\n"
+
+        yield f"data: {json.dumps({'sources': sources})}\n\n"
+        yield "data: [DONE]\n\n"
+
 
 # ==============================================================================
 # Standalone Manual Test Block (Runs only when executed directly)

@@ -3,14 +3,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import uuid
 
-from app.schemas.chat import ChatRequest, ChatResponse
-from app.core.rag_engine import NewsRAGEngine
+from app.schemas.chat import ChatRequest, ChatResponse, SourceCitation
+from app.core.langchain_rag import LangChainNewsRAG
 from app.db.database import get_db
 from app.db.crud import save_chat_message
 from app.db.models import ChatMessageModel, ChatSessionModel
 
 router = APIRouter(prefix="/api/chat", tags=["Chat & RAG"])
-rag_engine = NewsRAGEngine()
+rag_engine = LangChainNewsRAG()
 
 @router.post("", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
@@ -20,36 +20,52 @@ def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     # Save user query
     save_chat_message(db, session_id=session_id, role="user", content=request.message)
 
-    response = rag_engine.answer_query(
-        query=request.message,
+    result = rag_engine.answer_question(
+        question=request.message,
         category=request.category,
-        session_id=session_id,
-        top_k=request.top_k or 6
+        top_k=request.top_k or 5
     )
 
-    # Save assistant answer
-    sources_data = [s.model_dump() for s in response.sources]
+    # Save assistant answer & citations
     save_chat_message(
         db,
         session_id=session_id,
         role="assistant",
-        content=response.answer,
-        sources=sources_data
+        content=result["answer"],
+        sources=result["sources"]
     )
 
-    return response
+    citations = [
+        SourceCitation(
+            citation_id=s.get("citation_id"),
+            title=s.get("title", ""),
+            publisher=s.get("publisher", ""),
+            published_at=s.get("published_at", ""),
+            url=s.get("url", ""),
+            category=s.get("category")
+        )
+        for s in result["sources"]
+    ]
+
+    return ChatResponse(
+        answer=result["answer"],
+        sources=citations,
+        session_id=session_id
+    )
 
 @router.post("/stream")
-def stream_chat_endpoint(request: ChatRequest):
+def stream_chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     """Streams response tokens in real-time via Server-Sent Events (SSE)."""
     session_id = request.session_id or str(uuid.uuid4())
 
+    # Save user message
+    save_chat_message(db, session_id=session_id, role="user", content=request.message)
+
     return StreamingResponse(
         rag_engine.stream_answer(
-            query=request.message,
+            question=request.message,
             category=request.category,
-            session_id=session_id,
-            top_k=request.top_k or 6
+            top_k=request.top_k or 5
         ),
         media_type="text/event-stream"
     )
@@ -71,4 +87,3 @@ def get_chat_history(session_id: str, db: Session = Depends(get_db)):
         }
         for m in messages
     ]
-
