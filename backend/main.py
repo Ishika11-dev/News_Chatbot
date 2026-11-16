@@ -125,4 +125,10 @@ if __name__ == "__main__":
         print("=" * 70)
     else:
         import uvicorn
-        uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+        print("\n" + "=" * 65)
+        print("  🚀 News Intelligence Server is LIVE!")
+        print("  👉 Swagger UI  : http://127.0.0.1:8000/docs")
+        print("  👉 Health API  : http://127.0.0.1:8000/api/health")
+        print("  👉 System Stats: http://127.0.0.1:8000/api/stats")
+        print("=" * 65 + "\n")
+        uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

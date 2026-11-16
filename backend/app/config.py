@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     QDRANT_STORAGE_PATH: str = str(BASE_DIR / "data" / "qdrant")
     QDRANT_COLLECTION_NAME: str = "news_articles"
 
-    # Relational Database
-    DATABASE_URL: str = "sqlite:///./data/news.db"
+    # Relational Database (PostgreSQL required)
+    DATABASE_URL: str = "postgresql+psycopg://postgres:Postgres123@localhost:54323/news_db"
 
     # Ingestion & Retention
     FEEDS_CONFIG_PATH: str = str(BASE_DIR / "feeds.yaml")

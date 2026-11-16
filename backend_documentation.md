@@ -260,8 +260,10 @@ The system implements a **three-tier temporal defense**:
 
 ## 5. Database Layer & Data Models
 
-### Database Fallback Strategy (`app/db/database.py`)
-Production systems often configure PostgreSQL via `.env`. If a local PostgreSQL instance is unreachable (e.g. port blocked, credentials not configured), `database.py` catches the connection error and automatically initializes an embedded SQLite database at `backend/data/news.db`.
+### Required Production Database Policy (`app/db/database.py`)
+PostgreSQL is the **strictly required** database for the application. To ensure enterprise data integrity and prevent split-brain storage or accidental data loss across container restarts, **automatic fallback to SQLite is completely disabled**. 
+
+On startup, `init_db()` performs a pre-flight connection test against the configured `DATABASE_URL`. If PostgreSQL is unavailable (e.g., service stopped, incorrect credentials, port unreachable), the application logs a detailed `[FATAL DATABASE ERROR]` and immediately aborts startup with a `RuntimeError` rather than silently switching databases.
 
 ### Relational Schema Models (`app/db/models.py`)
 

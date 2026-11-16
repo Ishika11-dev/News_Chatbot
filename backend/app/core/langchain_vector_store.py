@@ -10,8 +10,9 @@ from langchain_qdrant import QdrantVectorStore
 
 from app.config import settings
 
-# Module-level singleton client to avoid local file locking conflicts
+# Module-level singletons to avoid local file locking conflicts & redundant API calls
 _qdrant_client: Optional[QdrantClient] = None
+_vector_store: Optional[QdrantVectorStore] = None
 
 
 def get_embeddings() -> GoogleGenerativeAIEmbeddings:
@@ -46,7 +47,12 @@ def get_vector_store() -> QdrantVectorStore:
     """
     Initializes and returns LangChain's QdrantVectorStore wrapper.
     Ensures the collection exists with the correct vector dimensions.
+    Uses singleton caching to avoid redundant validation calls.
     """
+    global _vector_store
+    if _vector_store is not None:
+        return _vector_store
+
     client = get_qdrant_client()
     embeddings = get_embeddings()
     collection_name = settings.QDRANT_COLLECTION_NAME
@@ -79,11 +85,12 @@ def get_vector_store() -> QdrantVectorStore:
             )
         )
 
-    return QdrantVectorStore(
+    _vector_store = QdrantVectorStore(
         client=client,
         collection_name=collection_name,
         embedding=embeddings
     )
+    return _vector_store
 
 
 def add_documents_to_qdrant(documents: List[Document], batch_size: int = 16) -> int:

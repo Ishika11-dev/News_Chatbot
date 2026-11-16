@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from typing import Optional
 import uuid
 
 from app.schemas.chat import ChatRequest, ChatResponse, SourceCitation
@@ -10,17 +11,27 @@ from app.db.crud import save_chat_message
 from app.db.models import ChatMessageModel, ChatSessionModel
 
 router = APIRouter(prefix="/api/chat", tags=["Chat & RAG"])
-rag_engine = LangChainNewsRAG()
+
+# Lazy singleton to avoid file locking collisions during module import
+_rag_engine: Optional[LangChainNewsRAG] = None
+
+def get_rag_engine() -> LangChainNewsRAG:
+    """Returns or lazily initializes the LangChainNewsRAG singleton."""
+    global _rag_engine
+    if _rag_engine is None:
+        _rag_engine = LangChainNewsRAG()
+    return _rag_engine
 
 @router.post("", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     """Receives user query, runs 30-day RAG retrieval, and generates grounded answer with citations."""
     session_id = request.session_id or str(uuid.uuid4())
+    rag = get_rag_engine()
 
     # Save user query
     save_chat_message(db, session_id=session_id, role="user", content=request.message)
 
-    result = rag_engine.answer_question(
+    result = rag.answer_question(
         question=request.message,
         category=request.category,
         top_k=request.top_k or 5
@@ -57,12 +68,13 @@ def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
 def stream_chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     """Streams response tokens in real-time via Server-Sent Events (SSE)."""
     session_id = request.session_id or str(uuid.uuid4())
+    rag = get_rag_engine()
 
     # Save user message
     save_chat_message(db, session_id=session_id, role="user", content=request.message)
 
     return StreamingResponse(
-        rag_engine.stream_answer(
+        rag.stream_answer(
             question=request.message,
             category=request.category,
             top_k=request.top_k or 5

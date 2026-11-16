@@ -30,20 +30,26 @@ from app.core.langchain_vector_store import get_vector_store
 # ==============================================================================
 
 def get_rag_llm(temperature: float = 0.2):
-    """Initializes the chat LLM (ChatOllama by default, with Gemini fallback)."""
+    """Initializes the chat LLM (ChatOllama if running, with seamless Gemini fallback)."""
     provider = getattr(settings, "LLM_PROVIDER", "ollama").lower()
-    if provider == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL or "gemini-3.8-flash",
-            google_api_key=settings.GEMINI_API_KEY,
-            temperature=temperature,
-        )
+    if provider == "ollama":
+        try:
+            import urllib.request
+            # Check if local Ollama server is currently listening
+            urllib.request.urlopen(f"{settings.OLLAMA_BASE_URL}/api/version", timeout=1.0)
+            return ChatOllama(
+                model=settings.OLLAMA_MODEL,
+                base_url=settings.OLLAMA_BASE_URL,
+                temperature=temperature
+            )
+        except Exception as e:
+            print(f"[!] Notice: Ollama at {settings.OLLAMA_BASE_URL} not reachable ({e}). Using Gemini LLM.")
 
-    return ChatOllama(
-        model=settings.OLLAMA_MODEL,
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=temperature
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    return ChatGoogleGenerativeAI(
+        model=settings.GEMINI_MODEL or "gemini-3.8-flash",
+        google_api_key=settings.GEMINI_API_KEY,
+        temperature=temperature,
     )
 
 
