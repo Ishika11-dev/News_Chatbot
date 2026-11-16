@@ -29,8 +29,8 @@ The **AI-Powered News Intelligence Chatbot** is an enterprise-grade backend engi
 
 ### Key Capabilities:
 - **Strict 30-Day Time Horizon:** Enforces a rigid 30-day temporal cutoff. News older than 30 days is automatically purged from both the vector store and the relational database, preventing outdated answers.
-- **LangChain-Native RAG:** Built entirely on top of the modern **LangChain** ecosystem (`langchain-core`, `langchain-google-genai`, `langchain-qdrant`, and `langchain-text-splitters`).
-- **Grounded Anti-Hallucination Engine:** Gemini 3.8 Flash is instructed to answer strictly from retrieved excerpts. Every factual claim is cited with inline bracket markers `[1]`, `[2]`, mapped to verified source URLs. If the facts are missing, it refuses to guess.
+- **LangChain-Native RAG:** Built entirely on top of the modern **LangChain** ecosystem (`langchain-core`, `langchain-ollama`, `langchain-google-genai`, `langchain-qdrant`, and `langchain-text-splitters`).
+- **Local Ollama LLM + Gemini Embeddings:** Runs inference locally via **Ollama** (`ChatOllama`, e.g. `qwen3:4b`), completely free of per-token API charges for chat, while retaining Google Gemini 3072-dimensional embeddings for semantic retrieval.
 - **Resilient Multi-Engine Storage:** Features automatic fallback from PostgreSQL to a local SQLite database, alongside an on-disk embedded Qdrant vector database using Google's 3072-dimensional `gemini-embedding-001` model.
 
 ---
@@ -393,3 +393,4 @@ python -m app.core.scheduler
 # 5. Verify All FastAPI Endpoints (TestClient suite)
 python main.py --test
 ```
+

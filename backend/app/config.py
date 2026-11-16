@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    # Gemini AI
+    # LLM Provider (Ollama / Gemini)
+    LLM_PROVIDER: str = Field(default="ollama", description="LLM Provider: 'ollama' or 'gemini'")
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Ollama Base URL")
+    OLLAMA_MODEL: str = Field(default="qwen3:4b", description="Ollama Model Name")
+
+    # Gemini AI (Used for Embeddings & optional Gemini LLM)
     GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key")
     GEMINI_MODEL: str = Field(default="gemini-3.8-flash", description="Gemini Chat Model")
     GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Embedding Model")

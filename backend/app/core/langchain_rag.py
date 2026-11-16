@@ -18,7 +18,7 @@ from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from qdrant_client.http import models as qmodels
 
 from app.config import settings
@@ -29,12 +29,21 @@ from app.core.langchain_vector_store import get_vector_store
 # 1. LLM & Prompt Initialization
 # ==============================================================================
 
-def get_rag_llm(temperature: float = 0.2) -> ChatGoogleGenerativeAI:
-    """Initializes Google Gemini Flash chat model."""
-    return ChatGoogleGenerativeAI(
-        model=settings.GEMINI_MODEL or "gemini-3.8-flash",
-        google_api_key=settings.GEMINI_API_KEY,
-        temperature=temperature,
+def get_rag_llm(temperature: float = 0.2):
+    """Initializes the chat LLM (ChatOllama by default, with Gemini fallback)."""
+    provider = getattr(settings, "LLM_PROVIDER", "ollama").lower()
+    if provider == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model=settings.GEMINI_MODEL or "gemini-3.8-flash",
+            google_api_key=settings.GEMINI_API_KEY,
+            temperature=temperature,
+        )
+
+    return ChatOllama(
+        model=settings.OLLAMA_MODEL,
+        base_url=settings.OLLAMA_BASE_URL,
+        temperature=temperature
     )
 
 
