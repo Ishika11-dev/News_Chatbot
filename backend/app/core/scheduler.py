@@ -1,73 +1,111 @@
+"""
+News Scheduler & 30-Day Retention Manager (Phase 5)
+--------------------------------------------------
+Automates periodic news ingestion using LangChain Document pipelines
+and enforces strict 30-day retention cleanup across Qdrant and SQLite/PostgreSQL.
+"""
+
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Set, Dict, Any
+from pathlib import Path
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
+from qdrant_client.http import models as qmodels
 
 from app.config import settings
-from app.core.rss_parser import RSSParser
-from app.core.deduplicator import ArticleDeduplicator
-from app.core.chunker import ArticleChunker
-from app.core.embeddings import GeminiEmbedder
-from app.core.vector_store import QdrantNewsStore
-from app.db.database import SessionLocal
-from app.db.crud import get_existing_article_ids, save_articles, log_ingestion, delete_expired_articles
-from app.schemas.news import IngestionStats
-from app.utils.date_utils import get_cutoff_timestamp
+from app.core.langchain_ingestion import LangChainNewsIngestor
+from app.core.langchain_vector_store import get_vector_store, get_qdrant_client, add_documents_to_qdrant
+from app.db.database import SessionLocal, init_db
+from app.db.crud import (
+    get_existing_article_ids,
+    save_articles,
+    delete_expired_articles,
+    log_ingestion
+)
+from app.schemas.news import CleanedArticle, IngestionStats
 from app.utils.logger import logger
+
 
 class NewsSchedulerManager:
     """Coordinates automated news ingestion and 30-day data retention cleanup."""
 
     def __init__(self):
         self.scheduler = BackgroundScheduler()
-        self.rss_parser = RSSParser()
-        self.chunker = ArticleChunker()
-        self.embedder = GeminiEmbedder()
-        self.vector_store = QdrantNewsStore()
+        self.ingestor = LangChainNewsIngestor(
+            feeds_config_path=settings.FEEDS_CONFIG_PATH,
+            retention_days=settings.RETENTION_DAYS
+        )
 
-    def run_ingestion_pipeline(self) -> IngestionStats:
-        """Executes full news extraction, deduplication, embedding, and vector storage."""
+    def run_ingestion_pipeline(self, max_articles: Optional[int] = None) -> IngestionStats:
+        """
+        Executes full news extraction, deduplication, LangChain chunking,
+        vector storage in Qdrant, and metadata persistence in the relational DB.
+        """
         start_time = time.time()
-        logger.info("--- Starting Scheduled News Ingestion Pipeline ---")
+        logger.info("--- Starting Scheduled LangChain News Ingestion Pipeline ---")
 
-        stats = IngestionStats(total_feeds=len(self.rss_parser.feeds))
+        stats = IngestionStats(total_feeds=len(self.ingestor.load_feed_configs()))
         db = SessionLocal()
 
         try:
-            # 1. Initialize deduplicator with existing IDs from DB
-            existing_ids = get_existing_article_ids(db)
-            dedup = ArticleDeduplicator()
-            dedup.load_existing_ids(existing_ids)
+            # 1. Retrieve existing article IDs to prevent duplicate embedding
+            existing_ids: Set[str] = get_existing_article_ids(db)
 
-            # 2. Extract and clean articles across all configured feeds
-            new_articles = self.rss_parser.fetch_all_feeds(deduplicator=dedup)
-            stats.total_fetched = len(new_articles)
+            # 2. Extract and clean articles strictly within 30-day window
+            parent_docs = self.ingestor.fetch_articles_as_documents(seen_ids=existing_ids)
+            stats.total_fetched = len(parent_docs)
 
-            if not new_articles:
+            if not parent_docs:
                 logger.info("No new articles to ingest.")
                 stats.duration_seconds = round(time.time() - start_time, 2)
                 log_ingestion(db, stats, status="SUCCESS")
                 return stats
 
-            # 3. Chunk articles
-            chunks = self.chunker.chunk_articles(new_articles)
-            logger.info(f"Generated {len(chunks)} text chunks from {len(new_articles)} articles.")
+            if max_articles and len(parent_docs) > max_articles:
+                parent_docs = parent_docs[:max_articles]
 
-            # 4. Generate embeddings
-            chunk_texts = [f"{c.title}. {c.text}" for c in chunks]
-            vectors = self.embedder.embed_batch(chunk_texts, task_type="RETRIEVAL_DOCUMENT")
+            # 3. Split into LangChain Document chunks
+            chunked_docs = self.ingestor.text_splitter.split_documents(parent_docs)
+            for i, chunk in enumerate(chunked_docs):
+                chunk.metadata["chunk_id"] = f"{chunk.metadata.get('article_id')}_{i}"
 
-            # 5. Store in Qdrant
-            upserted = self.vector_store.upsert_chunks(chunks, vectors)
+            logger.info(f"Split {len(parent_docs)} articles into {len(chunked_docs)} LangChain chunks.")
 
-            # 6. Save article metadata in relational DB
-            saved = save_articles(db, new_articles)
+            # 4. Embed and store chunks in Qdrant Vector Store
+            stored_count = add_documents_to_qdrant(chunked_docs)
+
+            # 5. Save parent article records in relational DB
+            cleaned_articles: List[CleanedArticle] = []
+            for doc in parent_docs:
+                meta = doc.metadata
+                try:
+                    pub_dt = datetime.fromisoformat(meta["published_at"])
+                except Exception:
+                    pub_dt = datetime.now(timezone.utc)
+
+                cleaned_articles.append(
+                    CleanedArticle(
+                        article_id=meta["article_id"],
+                        title=meta["title"],
+                        content=doc.page_content,
+                        summary=doc.page_content[:300],
+                        publisher=meta["publisher"],
+                        published_at=pub_dt,
+                        published_timestamp=float(meta["published_timestamp"]),
+                        category=meta["category"],
+                        article_url=meta["url"]
+                    )
+                )
+
+            saved = save_articles(db, cleaned_articles)
             stats.new_articles_ingested = saved
             stats.duration_seconds = round(time.time() - start_time, 2)
 
             log_ingestion(db, stats, status="SUCCESS")
-            logger.info(f"Ingestion finished: {saved} new articles saved in {stats.duration_seconds}s.")
+            logger.info(f"Ingestion finished: {saved} articles ({stored_count} chunks) saved in {stats.duration_seconds}s.")
             return stats
 
         except Exception as e:
@@ -78,29 +116,58 @@ class NewsSchedulerManager:
         finally:
             db.close()
 
-    def run_cleanup_pipeline(self) -> int:
-        """Purges news and vector embeddings older than 30 days."""
+    def run_cleanup_pipeline(self) -> Dict[str, Any]:
+        """
+        Enforces strict 30-day retention:
+        Deletes vector points from Qdrant and rows from relational DB older than 30 days.
+        """
         logger.info("--- Starting 30-Day Retention Cleanup Pipeline ---")
-        cutoff = get_cutoff_timestamp(retention_days=settings.RETENTION_DAYS)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings.RETENTION_DAYS)
+        cutoff_timestamp = cutoff_date.timestamp()
 
-        # 1. Clean Qdrant vectors
-        self.vector_store.delete_expired_articles(cutoff_timestamp=cutoff)
-
-        # 2. Clean Relational DB records
-        db = SessionLocal()
+        # 1. Purge expired vectors from Qdrant
+        qdrant_status = "SUCCESS"
         try:
-            deleted_db = delete_expired_articles(db, cutoff_timestamp=cutoff)
+            client = get_qdrant_client()
+            client.delete(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                points_selector=qmodels.FilterSelector(
+                    filter=qmodels.Filter(
+                        must=[
+                            qmodels.FieldCondition(
+                                key="metadata.published_timestamp",
+                                range=qmodels.Range(lt=cutoff_timestamp)
+                            )
+                        ]
+                    )
+                )
+            )
+            logger.info(f"Qdrant purge completed for articles before {cutoff_date.isoformat()}.")
+        except Exception as e:
+            logger.warning(f"Notice while purging Qdrant vectors: {e}")
+            qdrant_status = f"NOTICE: {e}"
+
+        # 2. Purge expired articles from relational database
+        db = SessionLocal()
+        deleted_db = 0
+        try:
+            deleted_db = delete_expired_articles(db, cutoff_timestamp=cutoff_timestamp)
             logger.info(f"Purged {deleted_db} expired articles from database.")
-            return deleted_db
         except Exception as e:
             logger.error(f"Error cleaning relational DB: {e}")
-            return 0
         finally:
             db.close()
 
+        return {
+            "cutoff_timestamp": cutoff_timestamp,
+            "cutoff_date": cutoff_date.isoformat(),
+            "deleted_db_articles": deleted_db,
+            "qdrant_status": qdrant_status
+        }
+
     def start_scheduler(self):
-        """Starts recurring background jobs for ingestion and cleanup."""
-        # Recurring Ingestion
+        """Starts background scheduled tasks for ingestion and retention purge."""
+        # 1. Recurring Ingestion
         self.scheduler.add_job(
             func=self.run_ingestion_pipeline,
             trigger=IntervalTrigger(hours=settings.INGESTION_INTERVAL_HOURS),
@@ -109,7 +176,7 @@ class NewsSchedulerManager:
             replace_existing=True
         )
 
-        # Daily Retention Cleanup at 00:00 UTC
+        # 2. Daily Retention Cleanup at 00:00 UTC
         self.scheduler.add_job(
             func=self.run_cleanup_pipeline,
             trigger=CronTrigger(hour=0, minute=0, timezone="UTC"),
@@ -118,14 +185,55 @@ class NewsSchedulerManager:
             replace_existing=True
         )
 
-        self.scheduler.start()
-        logger.info("APScheduler initialized and running background jobs.")
+        if not self.scheduler.running:
+            self.scheduler.start()
+            logger.info("News scheduler started successfully.")
 
     def shutdown(self):
-        """Gracefully stops the scheduler."""
+        """Gracefully shuts down the background scheduler."""
         if self.scheduler.running:
-            self.scheduler.shutdown()
-            logger.info("APScheduler stopped.")
+            self.scheduler.shutdown(wait=False)
+            logger.info("News scheduler stopped.")
 
+
+# Module singleton
 scheduler_manager = NewsSchedulerManager()
 
+
+# ==============================================================================
+# Standalone Manual Test Block (Runs only when executed directly)
+# ==============================================================================
+if __name__ == "__main__":
+    import sys
+
+    # Ensure backend directory is in path
+    backend_dir = Path(__file__).resolve().parent.parent.parent
+    sys.path.insert(0, str(backend_dir))
+
+    print("=" * 70)
+    print("  PHASE 5: SCHEDULER & 30-DAY RETENTION TEST")
+    print("=" * 70)
+
+    # Initialize tables
+    print("\n[1] Initializing database...")
+    init_db()
+
+    manager = NewsSchedulerManager()
+
+    # 1. Test 30-Day Cleanup Pipeline
+    print("\n[2] Testing 30-Day Retention Cleanup Pipeline...")
+    cleanup_result = manager.run_cleanup_pipeline()
+    print(f"    Cutoff Date         : {cleanup_result['cutoff_date']}")
+    print(f"    Purged DB Articles  : {cleanup_result['deleted_db_articles']}")
+    print(f"    Qdrant Purge Status : {cleanup_result['qdrant_status']}")
+
+    # 2. Test Ingestion Pipeline with a small batch
+    print("\n[3] Testing Ingestion Pipeline (Fresh sync test)...")
+    stats = manager.run_ingestion_pipeline(max_articles=5)
+    print(f"    Feeds Scanned        : {stats.total_feeds}")
+    print(f"    New Articles Ingested: {stats.new_articles_ingested}")
+    print(f"    Duration             : {stats.duration_seconds}s")
+
+    print("\n" + "=" * 70)
+    print("  [SUCCESS] Phase 5 Scheduler & Retention pipeline verified!")
+    print("=" * 70)

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Gemini AI
     GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key")
-    GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini Chat Model")
+    GEMINI_MODEL: str = Field(default="gemini-3.8-flash", description="Gemini Chat Model")
     GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Embedding Model")
     EMBEDDING_DIMENSION: int = 3072
 
