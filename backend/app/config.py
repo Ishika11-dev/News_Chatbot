@@ -26,10 +26,9 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = Field(default="gemini-3.8-flash", description="Gemini fallback model")
 
     # Embedding Model (Hugging Face BGE-Small local model)
-    EMBEDDING_PROVIDER: str = Field(default="huggingface", description="Embedding Provider: 'huggingface' or 'gemini'")
+    EMBEDDING_PROVIDER: str = Field(default="huggingface", description="Embedding Provider: 'huggingface'")
     EMBEDDING_MODEL_NAME: str = Field(default="BAAI/bge-small-en-v1.5", description="Local Embedding Model Name")
     EMBEDDING_DIMENSION: int = 384
-    GEMINI_EMBEDDING_MODEL: str = Field(default="text-embedding-004", description="Gemini fallback embedding model")
 
     # Vector DB (Qdrant)
     QDRANT_URL: str | None = None

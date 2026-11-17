@@ -26,28 +26,20 @@ def get_embeddings():
     if _embeddings is not None:
         return _embeddings
 
-    provider = getattr(settings, "EMBEDDING_PROVIDER", "huggingface").lower()
-    if provider == "gemini":
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        _embeddings = GoogleGenerativeAIEmbeddings(
-            model=f"models/{getattr(settings, 'GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')}",
-            google_api_key=getattr(settings, "GEMINI_API_KEY", "")
+    try:
+        # First attempt: load local cached model directly (instant, zero network latency/retries)
+        _embeddings = HuggingFaceEmbeddings(
+            model_name=settings.EMBEDDING_MODEL_NAME,
+            model_kwargs={"device": "cpu", "local_files_only": True},
+            encode_kwargs={"normalize_embeddings": True}
         )
-    else:
-        try:
-            # First attempt: load local cached model directly (instant, zero network latency/retries)
-            _embeddings = HuggingFaceEmbeddings(
-                model_name=settings.EMBEDDING_MODEL_NAME,
-                model_kwargs={"device": "cpu", "local_files_only": True},
-                encode_kwargs={"normalize_embeddings": True}
-            )
-        except Exception:
-            # Fallback if model files are not yet cached locally
-            _embeddings = HuggingFaceEmbeddings(
-                model_name=settings.EMBEDDING_MODEL_NAME,
-                model_kwargs={"device": "cpu"},
-                encode_kwargs={"normalize_embeddings": True}
-            )
+    except Exception:
+        # Fallback if model files are not yet cached locally
+        _embeddings = HuggingFaceEmbeddings(
+            model_name=settings.EMBEDDING_MODEL_NAME,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True}
+        )
 
     return _embeddings
 
@@ -124,39 +116,25 @@ def get_vector_store() -> QdrantVectorStore:
 
 def add_documents_to_qdrant(documents: List[Document], batch_size: int = 32) -> int:
     """
-    Embeds and stores LangChain Document chunks in Qdrant in safe batches.
-    For local Hugging Face embeddings, runs smoothly without rate limits.
-    For Gemini embeddings, includes automatic 429 rate limit backoff.
+    Embeds and stores LangChain Document chunks in Qdrant locally
+    using Hugging Face BGE-Small embeddings.
     """
     if not documents:
         return 0
 
     vector_store = get_vector_store()
     total_added = 0
-    is_gemini = getattr(settings, "EMBEDDING_PROVIDER", "").lower() == "gemini"
 
-    print(f"[*] Embedding and storing {len(documents)} document chunks in Qdrant using {settings.EMBEDDING_PROVIDER} ({settings.EMBEDDING_MODEL_NAME})...")
+    print(f"[*] Embedding and storing {len(documents)} document chunks in Qdrant using {settings.EMBEDDING_MODEL_NAME}...")
 
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                vector_store.add_documents(batch)
-                total_added += len(batch)
-                print(f"    -> Progress: {total_added}/{len(documents)} chunks saved.")
-                if is_gemini:
-                    time.sleep(0.8)  # Safe pause to stay within Gemini RPM limits
-                break
-            except Exception as e:
-                err_str = str(e)
-                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
-                    wait_time = 22
-                    print(f"    [!] Gemini Free-tier rate limit reached. Waiting {wait_time}s before retrying batch {i//batch_size + 1}...")
-                    time.sleep(wait_time)
-                else:
-                    print(f"[!] Error storing batch {i//batch_size + 1}: {e}")
-                    break
+        try:
+            vector_store.add_documents(batch)
+            total_added += len(batch)
+            print(f"    -> Progress: {total_added}/{len(documents)} chunks saved.")
+        except Exception as e:
+            print(f"[!] Error storing batch {i//batch_size + 1}: {e}")
 
     print(f"[✓] Successfully stored {total_added} document chunks in Qdrant!")
     return total_added
