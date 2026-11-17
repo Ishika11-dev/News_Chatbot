@@ -55,9 +55,18 @@ backend/
 │   │   ├── routes_health.py         # GET /api/health, GET /api/stats
 │   │   └── routes_admin.py          # POST /api/admin/trigger-ingest, POST /api/admin/trigger-cleanup
 │   │
+│   ├── ingestion/                   # Modular News Ingestion Package (Single Source of Truth)
+│   │   ├── feed_fetcher.py          # RSS feed discovery, YAML config loading, HTTP fetch
+│   │   ├── content_extractor.py     # Trafilatura-first extraction with RSS fallback
+│   │   ├── text_cleaner.py          # HTML sanitization and whitespace normalization
+│   │   ├── date_utils.py            # UTC date parsing & 30-day retention gate validation
+│   │   ├── deduplicator.py          # Tracking parameter stripping & SHA-256 deduplication
+│   │   ├── document_builder.py      # Standardized LangChain Document assembly
+│   │   ├── chunker.py               # 700-char chunks with 100 overlap & chunk_id metadata
+│   │   └── pipeline.py              # Unified NewsIngestionPipeline orchestrator
+│   │
 │   ├── core/                        # Business Logic & RAG Intelligence Engine
-│   │   ├── langchain_ingestion.py   # RSS scraping, HTML sanitizing, SHA-256 deduplication, LangChain chunking
-│   │   ├── langchain_vector_store.py# Qdrant client singleton, 3072-dim embeddings, collection management
+│   │   ├── langchain_vector_store.py# Qdrant client singleton, 384-dim BGE embeddings, collection management
 │   │   ├── langchain_rag.py         # LCEL RAG chain, time-filtered retriever, citations, anti-hallucination prompt
 │   │   └── scheduler.py             # APScheduler jobs for hourly news sync and daily 30-day purge
 │   │
@@ -168,12 +177,12 @@ The diagram below outlines the dual-track RAG system: the automated ingestion fl
 
 ```mermaid
 flowchart TD
-    subgraph INGESTION["1. Ingestion & Document Pipeline (langchain_ingestion.py)"]
-        A["feeds.yaml (11 RSS Feeds)"] -->|requests.get| B["FeedParser (Raw Entries)"]
-        B --> C["HTML Sanitizer & Boilerplate Remover"]
-        C --> D["URL Canonicalization & SHA-256 ID Generation"]
-        D -->|Filter: date >= 30d cutoff| E["LangChain Document Objects"]
-        E -->|RecursiveCharacterTextSplitter| F["Chunked Documents (chunk_size=700, overlap=100)"]
+    subgraph INGESTION["1. Modular Ingestion Pipeline (app/ingestion/)"]
+        A["feeds.yaml (11 RSS Feeds)"] -->|FeedFetcher| B["Raw Feed Entries"]
+        B --> C["text_cleaner.py & content_extractor.py (Trafilatura + RSS Fallback)"]
+        C --> D["deduplicator.py (Canonicalization & SHA-256 ID)"]
+        D -->|date_utils.py (Filter: date >= 30d cutoff)| E["document_builder.py (LangChain Documents)"]
+        E -->|chunker.py (RecursiveSplitter)| F["Chunked Documents (chunk_size=700, overlap=100)"]
     end
 
     subgraph STORAGE["2. Vector Storage & Indexing (langchain_vector_store.py)"]
@@ -199,14 +208,13 @@ flowchart TD
 
 ### Phase-by-Phase Component Breakdown
 
-#### Phase 2: LangChain Ingestion (`app/core/langchain_ingestion.py`)
-- **RSS Parsing:** Reads 11 feeds from `feeds.yaml` using `feedparser`.
-- **Sanitization:** `clean_html()` strips script, style, iframe, and advertising tags using `BeautifulSoup`.
-- **Deduplication:** Strips tracking parameters (`utm_*`, `fbclid`, `ref`) and hashes the canonical URL with SHA-256 to create deterministic `article_id`s.
-- **Document Creation:** Wraps content into `langchain_core.documents.Document`:
-  - `page_content`: Title + cleaned article text.
-  - `metadata`: `article_id`, `title`, `publisher`, `published_at`, `published_timestamp`, `url`, `category`.
-- **Chunking:** `RecursiveCharacterTextSplitter` configured with `chunk_size=700` and `chunk_overlap=100` splits long articles into coherent sections, tagging each with a unique `chunk_id`.
+#### Ingestion Architecture (`app/ingestion/`)
+- **RSS Parsing:** Reads feeds from `feeds.yaml` using `FeedFetcher`.
+- **Sanitization:** `text_cleaner.py` strips script, style, iframe, and advertising tags using `BeautifulSoup`.
+- **Extraction:** `content_extractor.py` performs Trafilatura-first scraping with RSS content fallback.
+- **Deduplication:** `deduplicator.py` strips tracking parameters (`utm_*`, `fbclid`, `ref`) and hashes canonical URLs with SHA-256.
+- **Document Creation:** `document_builder.py` wraps content into standardized `langchain_core.documents.Document`.
+- **Chunking:** `chunker.py` splits documents with `chunk_size=700` and `chunk_overlap=100`, tagging each chunk with `chunk_id`.
 
 #### Phase 3: LangChain Vector Store (`app/core/langchain_vector_store.py`)
 - **Embeddings Model:** `GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")`, producing **3072-dimensional** vectors.
@@ -252,7 +260,7 @@ The system implements a **three-tier temporal defense**:
 
 | Defense Tier | Where it Happens | How it Works |
 | :--- | :--- | :--- |
-| **Tier 1: Ingestion Gate** | `langchain_ingestion.py` | Before creating any Document, `parse_date_to_utc()` verifies `epoch_ts >= cutoff`. Articles older than 30 days are discarded at the door. |
+| **Tier 1: Ingestion Gate** | `app/ingestion/date_utils.py` | Before creating any Document, `parse_date_to_utc()` verifies `epoch_ts >= cutoff`. Missing/invalid dates or articles older than 30 days are discarded at the door. |
 | **Tier 2: Retrieval Gate** | `langchain_rag.py` | Qdrant vector queries enforce `Range(gte=now - 30d)`. A secondary in-memory filter rejects any chunk older than 30 days. |
 | **Tier 3: Daily Scheduled Purge** | `scheduler.py` | Every night at 00:00 UTC, a batch delete removes all vector points and DB rows where `published_timestamp < cutoff`. |
 
@@ -381,7 +389,7 @@ Each core module contains a standalone `if __name__ == "__main__":` block for te
 
 ```powershell
 # 1. Verify LangChain Ingestion & 30-day chunking
-python -m app.core.langchain_ingestion
+python backend/test_phase2.py
 
 # 2. Verify Qdrant Vector Store & 3072-dim Google Embeddings
 python -m app.core.langchain_vector_store

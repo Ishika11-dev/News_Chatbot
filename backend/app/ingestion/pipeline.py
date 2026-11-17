@@ -1,8 +1,9 @@
 """
 End-to-end news ingestion pipeline orchestrating fetch, extraction, cleaning, deduplication, and chunking.
+Acts as the unified entry point for all news ingestion across the application.
 """
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict, Any
 from langchain_core.documents import Document
 
 from app.ingestion.feed_fetcher import FeedFetcher
@@ -25,22 +26,26 @@ class NewsIngestionPipeline:
         retention_days: int = 30,
         chunk_size: int = 700,
         chunk_overlap: int = 100,
-        enable_trafilatura: bool = False
+        enable_trafilatura: bool = True
     ):
         self.retention_days = retention_days
         self.fetcher = FeedFetcher(config_path=feeds_config_path)
         self.extractor = ContentExtractor(enable_trafilatura=enable_trafilatura)
         self.builder = DocumentBuilder()
         self.chunker = ArticleChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.text_splitter = self.chunker.text_splitter
 
-    def load_feed_configs(self):
-        """Returns loaded feed configurations."""
+    def load_feed_configs(self) -> List[Dict[str, Any]]:
+        """Returns loaded feed configurations from feeds.yaml."""
         return self.fetcher.load_feed_configs()
 
     def fetch_articles_as_documents(self, seen_ids: Optional[Set[str]] = None) -> List[Document]:
         """
         Fetches all configured feeds, extracts valid articles within the 30-day retention window,
         deduplicates them, and wraps them into LangChain Document instances.
+
+        CRITICAL: Articles with missing or invalid publication dates are dropped and
+        never automatically treated as current news.
         """
         dedup = ArticleDeduplicator(seen_ids=seen_ids)
         feeds = self.load_feed_configs()
@@ -71,14 +76,15 @@ class NewsIngestionPipeline:
                 if dedup.is_seen(article_id):
                     continue
 
-                # 30-Day Retention Validation
+                # 30-Day Retention Validation & Date Parsing
                 raw_date = entry.get("published") or entry.get("pubDate") or entry.get("updated")
                 iso_date, epoch_ts = parse_date_to_utc(raw_date)
 
-                if not is_within_retention_window(epoch_ts, retention_days=self.retention_days):
+                # Skip articles with missing, invalid, or expired publication dates
+                if iso_date is None or epoch_ts is None or not is_within_retention_window(epoch_ts, retention_days=self.retention_days):
                     continue
 
-                # Content Extraction & Cleaning
+                # Content Extraction (Trafilatura-first with RSS fallback)
                 title, body = self.extractor.extract_article(entry, link=clean_url)
 
                 if len(title) < 5 or len(body) < 30:
@@ -86,7 +92,7 @@ class NewsIngestionPipeline:
 
                 dedup.mark_seen(article_id)
 
-                # Build Document
+                # Build Document with standardized metadata
                 doc = self.builder.build(
                     title=title,
                     body=body,
@@ -101,6 +107,10 @@ class NewsIngestionPipeline:
 
         return documents
 
+    def chunk_documents(self, documents: List[Document]) -> List[Document]:
+        """Splits parent Documents into chunks with metadata and chunk_ids."""
+        return self.chunker.split_documents(documents)
+
     def load_and_chunk_news(self, seen_ids: Optional[Set[str]] = None) -> List[Document]:
         """
         End-to-end execution:
@@ -108,4 +118,3 @@ class NewsIngestionPipeline:
         """
         parent_docs = self.fetch_articles_as_documents(seen_ids=seen_ids)
         return self.chunker.split_documents(parent_docs)
-

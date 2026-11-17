@@ -1,5 +1,6 @@
 """
-Article content extractor combining RSS feed payloads and Trafilatura web scraping.
+Article content extractor combining Trafilatura web scraping and RSS feed payloads.
+Implements Trafilatura-first extraction with graceful RSS fallback.
 """
 
 from typing import Dict, Any, Optional
@@ -15,11 +16,12 @@ except ImportError:
 
 class ContentExtractor:
     """
-    Extracts article title, summary, and body text from RSS feed entries,
-    with an optional full-webpage scrape via Trafilatura.
+    Extracts article title, summary, and body text.
+    Prioritizes full-text extraction via Trafilatura, falling back
+    to RSS feed content/summary when Trafilatura is unavailable or fails.
     """
 
-    def __init__(self, enable_trafilatura: bool = False):
+    def __init__(self, enable_trafilatura: bool = True):
         self.enable_trafilatura = enable_trafilatura and HAS_TRAFILATURA
 
     def extract_from_rss_entry(self, entry: Dict[str, Any]) -> tuple[str, str]:
@@ -43,7 +45,7 @@ class ContentExtractor:
     def extract_with_trafilatura(self, url: str, timeout: int = 10) -> Optional[str]:
         """
         Fetches the live webpage and extracts clean body text using Trafilatura.
-        Returns None if Trafilatura is unavailable or extraction fails.
+        Returns None if Trafilatura is unavailable, raises an error, or extraction fails.
         """
         if not HAS_TRAFILATURA or not url:
             return None
@@ -57,7 +59,7 @@ class ContentExtractor:
                     include_images=False,
                     output_format="txt"
                 )
-                if result and len(result.strip()) > 100:
+                if result and len(result.strip()) >= 50:
                     return result.strip()
         except Exception:
             pass
@@ -66,15 +68,23 @@ class ContentExtractor:
 
     def extract_article(self, entry: Dict[str, Any], link: str) -> tuple[str, str]:
         """
-        High-level extraction: gets RSS title/content, optionally enhancing with
-        full-text Trafilatura scrape if configured and available.
+        Trafilatura-first extraction with RSS fallback:
+        1. Attempts full-text scrape from article URL via Trafilatura.
+        2. Falls back to RSS feed payload if Trafilatura is unavailable,
+           disabled, or yields insufficient content.
         """
-        title, body = self.extract_from_rss_entry(entry)
+        raw_title = entry.get("title", "")
+        clean_title = clean_html(raw_title)
 
+        body = ""
+        # 1. Trafilatura-first
         if self.enable_trafilatura and link:
-            full_text = self.extract_with_trafilatura(link)
-            if full_text and len(full_text) > len(body):
-                body = full_text
+            extracted_text = self.extract_with_trafilatura(link)
+            if extracted_text:
+                body = extracted_text
 
-        return title, body
+        # 2. RSS fallback if Trafilatura produced no output
+        if not body:
+            _, body = self.extract_from_rss_entry(entry)
 
+        return clean_title, body

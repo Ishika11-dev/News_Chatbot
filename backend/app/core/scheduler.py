@@ -16,7 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 from qdrant_client.http import models as qmodels
 
 from app.config import settings
-from app.core.langchain_ingestion import LangChainNewsIngestor
+from app.ingestion import NewsIngestionPipeline
 from app.core.langchain_vector_store import get_vector_store, get_qdrant_client, add_documents_to_qdrant
 from app.db.database import SessionLocal, init_db
 from app.db.crud import (
@@ -34,7 +34,7 @@ class NewsSchedulerManager:
 
     def __init__(self):
         self.scheduler = BackgroundScheduler()
-        self.ingestor = LangChainNewsIngestor(
+        self.ingestor = NewsIngestionPipeline(
             feeds_config_path=settings.FEEDS_CONFIG_PATH,
             retention_days=settings.RETENTION_DAYS
         )
@@ -68,9 +68,7 @@ class NewsSchedulerManager:
                 parent_docs = parent_docs[:max_articles]
 
             # 3. Split into LangChain Document chunks
-            chunked_docs = self.ingestor.text_splitter.split_documents(parent_docs)
-            for i, chunk in enumerate(chunked_docs):
-                chunk.metadata["chunk_id"] = f"{chunk.metadata.get('article_id')}_{i}"
+            chunked_docs = self.ingestor.chunk_documents(parent_docs)
 
             logger.info(f"Split {len(parent_docs)} articles into {len(chunked_docs)} LangChain chunks.")
 
@@ -111,7 +109,11 @@ class NewsSchedulerManager:
         except Exception as e:
             logger.error(f"Error during ingestion pipeline: {e}")
             stats.duration_seconds = round(time.time() - start_time, 2)
-            log_ingestion(db, stats, status="FAILED")
+            try:
+                db.rollback()
+                log_ingestion(db, stats, status="FAILED")
+            except Exception:
+                pass
             return stats
         finally:
             db.close()

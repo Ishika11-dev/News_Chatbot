@@ -152,7 +152,7 @@ if __name__ == "__main__":
     backend_dir = Path(__file__).resolve().parent.parent.parent
     sys.path.insert(0, str(backend_dir))
 
-    from app.core.langchain_ingestion import LangChainNewsIngestor
+    from app.ingestion import NewsIngestionPipeline
 
     print("=" * 70)
     print("  PHASE 3: LANGCHAIN VECTOR STORE & EMBEDDINGS TEST")
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     # 1. Fetch small batch of fresh news
     print("\n[1] Fetching a small batch of news articles to test storage...")
-    ingestor = LangChainNewsIngestor()
+    ingestor = NewsIngestionPipeline()
     all_chunks = ingestor.load_and_chunk_news()
 
     # Take first 5 chunks for a fast test

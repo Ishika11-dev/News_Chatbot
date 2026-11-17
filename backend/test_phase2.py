@@ -10,7 +10,7 @@ from pathlib import Path
 # Ensure backend root is in Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.core.langchain_ingestion import LangChainNewsIngestor
+from app.ingestion import NewsIngestionPipeline
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
 
     # Initialize the ingestor
     feeds_path = Path(__file__).parent / "feeds.yaml"
-    ingestor = LangChainNewsIngestor(
+    ingestor = NewsIngestionPipeline(
         feeds_config_path=str(feeds_path),
         retention_days=30,
         chunk_size=700,
