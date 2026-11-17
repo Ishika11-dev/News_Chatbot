@@ -32,7 +32,7 @@ from app.core.langchain_vector_store import get_vector_store
 def get_rag_llm(temperature: float = 0.2):
     """Initializes the chat LLM (ChatOllama if running, with seamless Gemini fallback)."""
     provider = getattr(settings, "LLM_PROVIDER", "ollama").lower()
-    if provider == "ollama":
+    if provider == "ollama" and settings.OLLAMA_BASE_URL:
         try:
             import urllib.request
             # Check if local Ollama server is currently listening

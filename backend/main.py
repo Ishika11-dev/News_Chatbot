@@ -127,8 +127,8 @@ if __name__ == "__main__":
         import uvicorn
         print("\n" + "=" * 65)
         print("  🚀 News Intelligence Server is LIVE!")
-        print("  👉 Swagger UI  : http://127.0.0.1:8000/docs")
-        print("  👉 Health API  : http://127.0.0.1:8000/api/health")
-        print("  👉 System Stats: http://127.0.0.1:8000/api/stats")
+        print(f"  👉 Swagger UI  : http://{settings.SERVER_HOST}:{settings.SERVER_PORT}/docs")
+        print(f"  👉 Health API  : http://{settings.SERVER_HOST}:{settings.SERVER_PORT}/api/health")
+        print(f"  👉 System Stats: http://{settings.SERVER_HOST}:{settings.SERVER_PORT}/api/stats")
         print("=" * 65 + "\n")
-        uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
+        uvicorn.run(app, host=settings.SERVER_HOST, port=settings.SERVER_PORT, reload=False)
