@@ -1,0 +1,111 @@
+"""
+End-to-end news ingestion pipeline orchestrating fetch, extraction, cleaning, deduplication, and chunking.
+"""
+
+from typing import List, Optional, Set
+from langchain_core.documents import Document
+
+from app.ingestion.feed_fetcher import FeedFetcher
+from app.ingestion.content_extractor import ContentExtractor
+from app.ingestion.deduplicator import canonicalize_url, generate_article_id, ArticleDeduplicator
+from app.ingestion.date_utils import parse_date_to_utc, is_within_retention_window
+from app.ingestion.document_builder import DocumentBuilder
+from app.ingestion.chunker import ArticleChunker
+
+
+class NewsIngestionPipeline:
+    """
+    Coordinates modular components to fetch, clean, deduplicate,
+    and chunk news articles into LangChain Documents.
+    """
+
+    def __init__(
+        self,
+        feeds_config_path: str = "feeds.yaml",
+        retention_days: int = 30,
+        chunk_size: int = 700,
+        chunk_overlap: int = 100,
+        enable_trafilatura: bool = False
+    ):
+        self.retention_days = retention_days
+        self.fetcher = FeedFetcher(config_path=feeds_config_path)
+        self.extractor = ContentExtractor(enable_trafilatura=enable_trafilatura)
+        self.builder = DocumentBuilder()
+        self.chunker = ArticleChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+    def load_feed_configs(self):
+        """Returns loaded feed configurations."""
+        return self.fetcher.load_feed_configs()
+
+    def fetch_articles_as_documents(self, seen_ids: Optional[Set[str]] = None) -> List[Document]:
+        """
+        Fetches all configured feeds, extracts valid articles within the 30-day retention window,
+        deduplicates them, and wraps them into LangChain Document instances.
+        """
+        dedup = ArticleDeduplicator(seen_ids=seen_ids)
+        feeds = self.load_feed_configs()
+        documents: List[Document] = []
+
+        for feed in feeds:
+            feed_name = feed.get("name", "Unknown")
+            feed_url = feed.get("url")
+            publisher = feed.get("publisher", feed_name)
+            category = feed.get("category", "General")
+
+            if not feed_url:
+                continue
+
+            parsed = self.fetcher.fetch_feed(feed_url)
+            if not parsed or not parsed.entries:
+                continue
+
+            for entry in parsed.entries:
+                link = entry.get("link", "").strip()
+                if not link:
+                    continue
+
+                clean_url = canonicalize_url(link)
+                article_id = generate_article_id(clean_url)
+
+                # Deduplication
+                if dedup.is_seen(article_id):
+                    continue
+
+                # 30-Day Retention Validation
+                raw_date = entry.get("published") or entry.get("pubDate") or entry.get("updated")
+                iso_date, epoch_ts = parse_date_to_utc(raw_date)
+
+                if not is_within_retention_window(epoch_ts, retention_days=self.retention_days):
+                    continue
+
+                # Content Extraction & Cleaning
+                title, body = self.extractor.extract_article(entry, link=clean_url)
+
+                if len(title) < 5 or len(body) < 30:
+                    continue
+
+                dedup.mark_seen(article_id)
+
+                # Build Document
+                doc = self.builder.build(
+                    title=title,
+                    body=body,
+                    article_id=article_id,
+                    publisher=publisher,
+                    published_at=iso_date,
+                    published_timestamp=epoch_ts,
+                    url=clean_url,
+                    category=category
+                )
+                documents.append(doc)
+
+        return documents
+
+    def load_and_chunk_news(self, seen_ids: Optional[Set[str]] = None) -> List[Document]:
+        """
+        End-to-end execution:
+        Fetches fresh news -> Builds Documents -> Chunks with RecursiveCharacterTextSplitter.
+        """
+        parent_docs = self.fetch_articles_as_documents(seen_ids=seen_ids)
+        return self.chunker.split_documents(parent_docs)
+

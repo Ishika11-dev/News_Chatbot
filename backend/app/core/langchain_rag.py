@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, AsyncIterator
 from pathlib import Path
 import json
+import re
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -111,17 +112,54 @@ def format_docs_with_citations(docs: List[Document]) -> tuple[str, List[Dict[str
         # Track unique sources for the frontend/API response
         if article_id not in seen_articles:
             seen_articles.add(article_id)
+            score_val = meta.get("score")
             sources.append({
                 "citation_id": i,
                 "title": title,
                 "publisher": publisher,
                 "published_at": published_at,
                 "url": url,
-                "category": category
+                "category": category,
+                "score": round(float(score_val), 3) if score_val is not None else None
             })
 
     formatted_context = "\n\n".join(context_parts)
     return formatted_context, sources
+
+
+REFUSAL_PHRASES = [
+    "do not have verified news",
+    "cannot answer",
+    "no verified news",
+    "not enough verified news",
+    "no recent news",
+    "do not have enough information",
+    "not enough information",
+    "does not mention",
+    "no information"
+]
+
+
+def filter_cited_sources(answer_text: str, sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Prunes sources to ensure grounding integrity:
+    1. If the assistant stated it lacks verified news, sources are completely cleared ([]).
+    2. If citations like [1], [2] are present in the answer, only returns the sources actually cited.
+    3. If the answer does not cite any source, removes uncited sources to avoid returning irrelevant cards.
+    """
+    lower_ans = answer_text.lower()
+    if any(phrase in lower_ans for phrase in REFUSAL_PHRASES):
+        return []
+
+    # Find cited citation numbers: e.g. [1], [2]
+    cited_ids = {int(m) for m in re.findall(r"\[(\d+)\]", answer_text)}
+    if cited_ids:
+        return [s for s in sources if s.get("citation_id") in cited_ids]
+
+    if len(answer_text.strip()) < 60:
+        return []
+
+    return sources
 
 
 # ==============================================================================
@@ -143,8 +181,8 @@ class LangChainNewsRAG:
 
     def retrieve_recent_docs(self, query: str, top_k: int = 5, category: Optional[str] = None) -> List[Document]:
         """
-        Retrieves relevant documents strictly within the 30-day retention window.
-        Uses dual-layer filtering: Qdrant filter condition + in-memory timestamp guard.
+        Retrieves relevant documents strictly within the 30-day retention window
+        and above the minimum similarity score threshold.
         """
         cutoff_ts = self._get_cutoff_timestamp()
 
@@ -168,25 +206,39 @@ class LangChainNewsRAG:
         qdrant_filter = qmodels.Filter(must=conditions)
 
         try:
-            # Query Qdrant with filter
-            raw_docs = self.vector_store.similarity_search(
+            # Query Qdrant with filter and similarity score calculation
+            raw_docs_with_scores = self.vector_store.similarity_search_with_score(
                 query=query,
-                k=top_k,
+                k=top_k * 2,
                 filter=qdrant_filter
             )
         except Exception as e:
-            # Fallback to similarity search and apply in-memory filter if backend filter encounters an index issue
+            # Fallback to similarity search with scores if filter encounters index issues
             print(f"[!] Qdrant filter query notice: {e}; falling back to post-filtering.")
-            raw_docs = self.vector_store.similarity_search(query=query, k=top_k * 2)
+            raw_docs_with_scores = self.vector_store.similarity_search_with_score(query=query, k=top_k * 2)
 
-        # Dual-layer guarantee: strictly enforce 30-day cutoff in-memory
+        # Dual-layer guarantee: strictly enforce 30-day cutoff AND similarity threshold in-memory
         valid_docs = []
-        for doc in raw_docs:
+        similarity_threshold = getattr(settings, "SIMILARITY_THRESHOLD", 0.35)
+
+        for item in raw_docs_with_scores:
+            if isinstance(item, tuple) and len(item) == 2:
+                doc, score = item
+            else:
+                doc, score = item, None
+
+            # Skip irrelevant documents with low similarity score
+            if score is not None and float(score) < similarity_threshold:
+                continue
+
             ts = doc.metadata.get("published_timestamp")
             if ts is not None and float(ts) >= cutoff_ts:
+                if score is not None:
+                    doc.metadata["score"] = round(float(score), 4)
                 valid_docs.append(doc)
             elif ts is None:
-                # If timestamp is absent, verify via published_at string if available
+                if score is not None:
+                    doc.metadata["score"] = round(float(score), 4)
                 valid_docs.append(doc)
 
         return valid_docs[:top_k]
@@ -194,10 +246,10 @@ class LangChainNewsRAG:
     def answer_question(self, question: str, top_k: int = 5, category: Optional[str] = None) -> Dict[str, Any]:
         """
         Executes the LangChain RAG pipeline:
-        1. Retrieves 30-day filtered chunks.
+        1. Retrieves 30-day filtered chunks above the similarity threshold.
         2. Formats context with citation indices [1], [2].
-        3. Invokes Gemini 3.8 Flash with the strict anti-hallucination prompt.
-        4. Returns answer and structured source metadata.
+        3. Invokes the LLM with the strict anti-hallucination prompt.
+        4. Prunes unreferenced sources or clears them if the model refuses to answer.
         """
         retrieved_docs = self.retrieve_recent_docs(query=question, top_k=top_k, category=category)
         formatted_context, sources = format_docs_with_citations(retrieved_docs)
@@ -217,13 +269,16 @@ class LangChainNewsRAG:
         response_text = rag_chain.invoke({
             "context": formatted_context,
             "question": question
-        })
+        }).strip()
+
+        # Clean sources: remove unreferenced citations or clear if refused
+        final_sources = filter_cited_sources(response_text, sources)
 
         return {
             "question": question,
-            "answer": response_text.strip(),
-            "sources": sources,
-            "retrieved_count": len(retrieved_docs)
+            "answer": response_text,
+            "sources": final_sources,
+            "retrieved_count": len(final_sources)
         }
 
     def stream_answer(self, question: str, top_k: int = 5, category: Optional[str] = None):
@@ -241,10 +296,15 @@ class LangChainNewsRAG:
             return
 
         rag_chain = PROMPT_TEMPLATE | self.llm | StrOutputParser()
+        full_tokens = []
         for token in rag_chain.stream({"context": formatted_context, "question": question}):
+            full_tokens.append(token)
             yield f"data: {json.dumps({'token': token})}\n\n"
 
-        yield f"data: {json.dumps({'sources': sources})}\n\n"
+        full_text = "".join(full_tokens).strip()
+        final_sources = filter_cited_sources(full_text, sources)
+
+        yield f"data: {json.dumps({'sources': final_sources})}\n\n"
         yield "data: [DONE]\n\n"
 
 

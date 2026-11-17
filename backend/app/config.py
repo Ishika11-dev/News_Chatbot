@@ -43,6 +43,6 @@ class Settings(BaseSettings):
     INGESTION_INTERVAL_HOURS: int = 12
     CLEANUP_INTERVAL_HOURS: int = 24
     TOP_K_RETRIEVAL: int = 6
-    SIMILARITY_THRESHOLD: float = 0.30
+    SIMILARITY_THRESHOLD: float = 0.35
 
 settings = Settings()

@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 from langchain_core.documents import Document
-from app.core.langchain_rag import format_docs_with_citations
+from app.core.langchain_rag import format_docs_with_citations, filter_cited_sources
 from app.utils.date_utils import get_cutoff_timestamp, datetime_to_epoch
 
 def test_rag_context_formatting():
@@ -43,6 +43,27 @@ def test_rag_fallback_when_empty():
     context_str, sources = format_docs_with_citations([])
     assert context_str == "No recent news articles found for this topic."
     assert sources == []
+
+def test_filter_cited_sources_prunes_on_refusal():
+    """Verifies that when assistant states it lacks news, sources are cleared."""
+    mock_sources = [
+        {"citation_id": 1, "title": "Ford News", "url": "https://example.com/ford"}
+    ]
+    refusal = "I do not have verified news from the past 30 days to answer this question."
+    pruned = filter_cited_sources(refusal, mock_sources)
+    assert pruned == []
+
+def test_filter_cited_sources_retains_only_cited():
+    """Verifies that only sources referenced as [1], [2] in answer text are returned."""
+    mock_sources = [
+        {"citation_id": 1, "title": "Nvidia News", "url": "https://example.com/nvidia"},
+        {"citation_id": 2, "title": "Unrelated Ford News", "url": "https://example.com/ford"}
+    ]
+    answer = "Nvidia is facing a new antitrust inquiry according to recent reports [1]."
+    pruned = filter_cited_sources(answer, mock_sources)
+    assert len(pruned) == 1
+    assert pruned[0]["citation_id"] == 1
+    assert pruned[0]["title"] == "Nvidia News"
 
 def test_30_day_cutoff_enforcement():
     """Validates that cutoff epoch correctly separates fresh news from expired news."""
