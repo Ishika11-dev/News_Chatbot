@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     GEMINI_API_KEY: str = ""
     OLLAMA_BASE_URL: str = ""
+    QDRANT_URL: str = ""
+    QDRANT_API_KEY: str = ""
 
     # Models & Providers (overridable via .env)
     LLM_PROVIDER: str = "ollama"

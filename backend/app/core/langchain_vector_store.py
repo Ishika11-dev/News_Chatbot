@@ -50,10 +50,11 @@ def get_qdrant_client() -> QdrantClient:
     if _qdrant_client is not None:
         return _qdrant_client
 
-    if settings.QDRANT_URL:
+    qdrant_url = getattr(settings, "QDRANT_URL", None)
+    if qdrant_url:
         _qdrant_client = QdrantClient(
-            url=settings.QDRANT_URL,
-            api_key=settings.QDRANT_API_KEY,
+            url=qdrant_url,
+            api_key=getattr(settings, "QDRANT_API_KEY", None) or None,
             timeout=20
         )
     else:
