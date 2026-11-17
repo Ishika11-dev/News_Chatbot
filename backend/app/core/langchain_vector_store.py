@@ -1,11 +1,15 @@
+import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 import time
+
+# Disable Windows symlink warning for Hugging Face cache
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from langchain_core.documents import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 
 from app.config import settings
@@ -13,14 +17,39 @@ from app.config import settings
 # Module-level singletons to avoid local file locking conflicts & redundant API calls
 _qdrant_client: Optional[QdrantClient] = None
 _vector_store: Optional[QdrantVectorStore] = None
+_embeddings: Optional[Any] = None
 
 
-def get_embeddings() -> GoogleGenerativeAIEmbeddings:
-    """Initializes LangChain's Google GenAI Embeddings model."""
-    return GoogleGenerativeAIEmbeddings(
-        model=f"models/{settings.GEMINI_EMBEDDING_MODEL}",
-        google_api_key=settings.GEMINI_API_KEY
-    )
+def get_embeddings():
+    """Initializes local HuggingFace BGE-small embedding model."""
+    global _embeddings
+    if _embeddings is not None:
+        return _embeddings
+
+    provider = getattr(settings, "EMBEDDING_PROVIDER", "huggingface").lower()
+    if provider == "gemini":
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        _embeddings = GoogleGenerativeAIEmbeddings(
+            model=f"models/{getattr(settings, 'GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')}",
+            google_api_key=getattr(settings, "GEMINI_API_KEY", "")
+        )
+    else:
+        try:
+            # First attempt: load local cached model directly (instant, zero network latency/retries)
+            _embeddings = HuggingFaceEmbeddings(
+                model_name=settings.EMBEDDING_MODEL_NAME,
+                model_kwargs={"device": "cpu", "local_files_only": True},
+                encode_kwargs={"normalize_embeddings": True}
+            )
+        except Exception:
+            # Fallback if model files are not yet cached locally
+            _embeddings = HuggingFaceEmbeddings(
+                model_name=settings.EMBEDDING_MODEL_NAME,
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True}
+            )
+
+    return _embeddings
 
 
 def get_qdrant_client() -> QdrantClient:
@@ -93,28 +122,41 @@ def get_vector_store() -> QdrantVectorStore:
     return _vector_store
 
 
-def add_documents_to_qdrant(documents: List[Document], batch_size: int = 16) -> int:
+def add_documents_to_qdrant(documents: List[Document], batch_size: int = 32) -> int:
     """
     Embeds and stores LangChain Document chunks in Qdrant in safe batches.
+    For local Hugging Face embeddings, runs smoothly without rate limits.
+    For Gemini embeddings, includes automatic 429 rate limit backoff.
     """
     if not documents:
         return 0
 
     vector_store = get_vector_store()
     total_added = 0
+    is_gemini = getattr(settings, "EMBEDDING_PROVIDER", "").lower() == "gemini"
 
-    print(f"[*] Embedding and storing {len(documents)} document chunks in Qdrant...")
+    print(f"[*] Embedding and storing {len(documents)} document chunks in Qdrant using {settings.EMBEDDING_PROVIDER} ({settings.EMBEDDING_MODEL_NAME})...")
 
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
-        try:
-            vector_store.add_documents(batch)
-            total_added += len(batch)
-            print(f"    -> Progress: {total_added}/{len(documents)} chunks saved.")
-            # Brief pause to stay well within Gemini RPM limits
-            time.sleep(0.3)
-        except Exception as e:
-            print(f"[!] Error storing batch {i//batch_size + 1}: {e}")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                vector_store.add_documents(batch)
+                total_added += len(batch)
+                print(f"    -> Progress: {total_added}/{len(documents)} chunks saved.")
+                if is_gemini:
+                    time.sleep(0.8)  # Safe pause to stay within Gemini RPM limits
+                break
+            except Exception as e:
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
+                    wait_time = 22
+                    print(f"    [!] Gemini Free-tier rate limit reached. Waiting {wait_time}s before retrying batch {i//batch_size + 1}...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"[!] Error storing batch {i//batch_size + 1}: {e}")
+                    break
 
     print(f"[✓] Successfully stored {total_added} document chunks in Qdrant!")
     return total_added

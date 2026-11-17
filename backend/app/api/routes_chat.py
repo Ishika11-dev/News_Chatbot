@@ -31,11 +31,23 @@ def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     # Save user query
     save_chat_message(db, session_id=session_id, role="user", content=request.message)
 
-    result = rag.answer_question(
-        question=request.message,
-        category=request.category,
-        top_k=request.top_k or 5
-    )
+    try:
+        result = rag.answer_question(
+            question=request.message,
+            category=request.category,
+            top_k=request.top_k or 5
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            answer = "The embedding service is temporarily rate-limited by Google Gemini's free tier. Please wait 15–20 seconds and try again."
+        else:
+            answer = f"I encountered an error retrieving news: {e}"
+
+        result = {
+            "answer": answer,
+            "sources": []
+        }
 
     # Save assistant answer & citations
     save_chat_message(

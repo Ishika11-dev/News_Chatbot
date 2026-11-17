@@ -156,11 +156,12 @@ class LangChainNewsRAG:
             )
         ]
 
-        if category:
+        # Only apply category filter if user passed a real category (ignoring Swagger placeholder "string" and "All")
+        if category and category.strip().lower() not in ["all", "string", "none", "", "null"]:
             conditions.append(
                 qmodels.FieldCondition(
                     key="metadata.category",
-                    match=qmodels.MatchValue(value=category)
+                    match=qmodels.MatchValue(value=category.strip())
                 )
             )
 

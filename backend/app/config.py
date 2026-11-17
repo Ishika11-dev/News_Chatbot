@@ -22,12 +22,14 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(default="ollama", description="LLM Provider: 'ollama' or 'gemini'")
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Ollama Base URL")
     OLLAMA_MODEL: str = Field(default="qwen3:4b", description="Ollama Model Name")
+    GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key for fallback")
+    GEMINI_MODEL: str = Field(default="gemini-3.8-flash", description="Gemini fallback model")
 
-    # Gemini AI (Used for Embeddings & optional Gemini LLM)
-    GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key")
-    GEMINI_MODEL: str = Field(default="gemini-3.8-flash", description="Gemini Chat Model")
-    GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Embedding Model")
-    EMBEDDING_DIMENSION: int = 3072
+    # Embedding Model (Hugging Face BGE-Small local model)
+    EMBEDDING_PROVIDER: str = Field(default="huggingface", description="Embedding Provider: 'huggingface' or 'gemini'")
+    EMBEDDING_MODEL_NAME: str = Field(default="BAAI/bge-small-en-v1.5", description="Local Embedding Model Name")
+    EMBEDDING_DIMENSION: int = 384
+    GEMINI_EMBEDDING_MODEL: str = Field(default="text-embedding-004", description="Gemini fallback embedding model")
 
     # Vector DB (Qdrant)
     QDRANT_URL: str | None = None

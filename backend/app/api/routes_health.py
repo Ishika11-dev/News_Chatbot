@@ -44,6 +44,9 @@ def get_system_stats(db: Session = Depends(get_db)):
         "active_articles_30d": active_articles,
         "retention_window_days": settings.RETENTION_DAYS,
         "vector_store": qdrant_stats,
-        "gemini_model": settings.GEMINI_MODEL,
-        "embedding_model": settings.GEMINI_EMBEDDING_MODEL
+        "llm_provider": settings.LLM_PROVIDER,
+        "llm_model": settings.OLLAMA_MODEL if settings.LLM_PROVIDER == "ollama" else settings.GEMINI_MODEL,
+        "embedding_provider": settings.EMBEDDING_PROVIDER,
+        "embedding_model": settings.EMBEDDING_MODEL_NAME if settings.EMBEDDING_PROVIDER == "huggingface" else settings.GEMINI_EMBEDDING_MODEL,
+        "gemini_model": settings.GEMINI_MODEL
     }

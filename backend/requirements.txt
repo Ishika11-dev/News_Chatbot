@@ -29,3 +29,5 @@ apscheduler>=3.10.4
 pytest>=8.3.3
 
 langchain-ollama
+sentence-transformers>=3.0.0
+langchain-huggingface>=0.1.0

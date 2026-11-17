@@ -12,10 +12,30 @@ class SourceCitation(BaseModel):
     score: Optional[float] = None
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=2, max_length=2000, description="User question or query")
-    session_id: Optional[str] = Field(None, description="Optional conversation session ID")
-    category: Optional[str] = Field(None, description="Optional news category filter")
-    top_k: Optional[int] = Field(5, ge=1, le=15, description="Number of context chunks to retrieve")
+    message: str = Field(
+        ...,
+        min_length=2,
+        max_length=2000,
+        description="User question or query",
+        examples=["What investigation was launched regarding Nvidia?"]
+    )
+    session_id: Optional[str] = Field(
+        None,
+        description="Optional conversation session ID (leave null for auto-generated)",
+        examples=[None]
+    )
+    category: Optional[str] = Field(
+        None,
+        description="Optional news category filter (e.g. Technology, Business) or null for all",
+        examples=[None]
+    )
+    top_k: Optional[int] = Field(
+        5,
+        ge=1,
+        le=15,
+        description="Number of context chunks to retrieve",
+        examples=[5]
+    )
 
 class ChatResponse(BaseModel):
     answer: str
