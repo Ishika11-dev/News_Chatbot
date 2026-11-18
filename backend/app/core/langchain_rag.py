@@ -48,7 +48,7 @@ def get_rag_llm(temperature: float = 0.2):
 
     from langchain_google_genai import ChatGoogleGenerativeAI
     return ChatGoogleGenerativeAI(
-        model=settings.GEMINI_MODEL or "gemini-3.8-flash",
+        model=settings.GEMINI_MODEL or "gemini-1.5-flash",
         google_api_key=settings.GEMINI_API_KEY,
         temperature=temperature,
     )

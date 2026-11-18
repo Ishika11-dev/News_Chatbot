@@ -27,8 +27,8 @@ class Settings(BaseSettings):
 
     # Models & Providers (overridable via .env)
     LLM_PROVIDER: str = "ollama"
-    OLLAMA_MODEL: str = "qwen3:4b"
-    GEMINI_MODEL: str = "gemini-3.8-flash"
+    OLLAMA_MODEL: str = "qwen2.5:3b"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
     EMBEDDING_PROVIDER: str = "huggingface"
     EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = 384

@@ -18,6 +18,15 @@ async def lifespan(app: FastAPI):
     logger.info("Starting background scheduler...")
     scheduler_manager.start_scheduler()
 
+    # Pre-warm Embedding Model & RAG Engine to eliminate first-request cold start latency
+    logger.info("Pre-warming Vector Store and RAG Engine...")
+    try:
+        from app.api.routes_chat import get_rag_engine
+        get_rag_engine()
+        logger.info("RAG Engine & Embeddings pre-warmed successfully.")
+    except Exception as e:
+        logger.warning(f"Could not pre-warm RAG engine at startup: {e}")
+
     yield
 
     logger.info("Shutting down background scheduler...")
@@ -53,6 +62,16 @@ def root():
         "docs_url": "/docs",
         "health_url": "/api/health"
     }
+
+    from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ==============================================================================
 # Execution & Verification Block
