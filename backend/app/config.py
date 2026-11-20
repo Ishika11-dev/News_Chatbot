@@ -26,12 +26,12 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str = ""
 
     # Models & Providers (overridable via .env)
-    LLM_PROVIDER: str = "ollama"
-    OLLAMA_MODEL: str = "qwen3:4b"
+    LLM_PROVIDER: str = "gemini"
+    JINA_API_KEY: str = ""  
     GEMINI_MODEL: str = "gemini-1.5-flash"
-    EMBEDDING_PROVIDER: str = "huggingface"
-    EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_PROVIDER: str = "jina"
+    EMBEDDING_MODEL_NAME: str = "jina-embeddings-v3"
+    EMBEDDING_DIMENSION: int = 1024
 
     # Storage Paths
     QDRANT_STORAGE_PATH: str = str(BASE_DIR / "data" / "qdrant")

@@ -20,27 +20,19 @@ _vector_store: Optional[QdrantVectorStore] = None
 _embeddings: Optional[Any] = None
 
 
+from langchain_community.embeddings import JinaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+
 def get_embeddings():
-    """Initializes local HuggingFace BGE-small embedding model."""
+    """Initializes embeddings (Jina AI cloud API )."""
     global _embeddings
     if _embeddings is not None:
         return _embeddings
 
-    try:
-        # First attempt: load local cached model directly (instant, zero network latency/retries)
-        _embeddings = HuggingFaceEmbeddings(
-            model_name=settings.EMBEDDING_MODEL_NAME,
-            model_kwargs={"device": "cpu", "local_files_only": True},
-            encode_kwargs={"normalize_embeddings": True}
-        )
-    except Exception:
-        # Fallback if model files are not yet cached locally
-        _embeddings = HuggingFaceEmbeddings(
-            model_name=settings.EMBEDDING_MODEL_NAME,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
-        )
-
+    _embeddings = JinaEmbeddings(
+        jina_api_key=settings.JINA_API_KEY,
+        model_name=(settings.EMBEDDING_MODEL_NAME or "jina-embeddings-v3").strip()
+    )
     return _embeddings
 
 
@@ -113,18 +105,15 @@ def get_vector_store() -> QdrantVectorStore:
         embedding=embeddings
     )
     return _vector_store
-
-
+    
 def add_documents_to_qdrant(documents: List[Document], batch_size: int = 32) -> int:
-    """
-    Embeds and stores LangChain Document chunks in Qdrant locally
-    using Hugging Face BGE-Small embeddings.
-    """
+    """Embeds and stores LangChain Document chunks in Qdrant."""
     if not documents:
         return 0
 
     vector_store = get_vector_store()
     total_added = 0
+    errors: List[str] = []
 
     print(f"[*] Embedding and storing {len(documents)} document chunks in Qdrant using {settings.EMBEDDING_MODEL_NAME}...")
 
@@ -135,11 +124,16 @@ def add_documents_to_qdrant(documents: List[Document], batch_size: int = 32) -> 
             total_added += len(batch)
             print(f"    -> Progress: {total_added}/{len(documents)} chunks saved.")
         except Exception as e:
-            print(f"[!] Error storing batch {i//batch_size + 1}: {e}")
+            err_msg = f"Batch {i//batch_size + 1} failed: {e}"
+            print(f"[!] {err_msg}")
+            errors.append(err_msg)
 
-    print(f"[✓] Successfully stored {total_added} document chunks in Qdrant!")
+    # If completely failed to store anything, raise so the scheduler knows
+    if documents and total_added == 0:
+        raise RuntimeError(f"Qdrant vector storage completely failed: {'; '.join(errors)}")
+
+    print(f"[✓] Successfully stored {total_added}/{len(documents)} document chunks in Qdrant!")
     return total_added
-
 
 # ==============================================================================
 # Standalone Manual Test Block (Runs only when executed directly)

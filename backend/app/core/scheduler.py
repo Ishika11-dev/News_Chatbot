@@ -69,13 +69,35 @@ class NewsSchedulerManager:
 
             # 3. Split into LangChain Document chunks
             chunked_docs = self.ingestor.chunk_documents(parent_docs)
+            stats.total_chunks_created = len(chunked_docs)
 
             logger.info(f"Split {len(parent_docs)} articles into {len(chunked_docs)} LangChain chunks.")
 
             # 4. Embed and store chunks in Qdrant Vector Store
-            stored_count = add_documents_to_qdrant(chunked_docs)
+            try:
+                stored_count = add_documents_to_qdrant(chunked_docs)
+                stats.total_chunks_stored = stored_count
+            except Exception as e:
+                logger.error(f"Vector storage failed: {e}")
+                stats.total_chunks_stored = 0
+                stats.status = "FAILED"
+                stats.error_message = str(e)
+                stats.duration_seconds = round(time.time() - start_time, 2)
+                db.rollback()
+                log_ingestion(db, stats, status="FAILED")
+                return stats
 
-            # 5. Save parent article records in relational DB
+            # Transactional Safety Guard: If chunks were generated but zero stored, abort before writing to SQL
+            if chunked_docs and stored_count == 0:
+                logger.error("Abort: Zero chunks stored in Qdrant. Skipping database persistence to avoid orphaned records.")
+                stats.status = "FAILED"
+                stats.error_message = "Zero chunks stored in Qdrant"
+                stats.duration_seconds = round(time.time() - start_time, 2)
+                db.rollback()
+                log_ingestion(db, stats, status="FAILED")
+                return stats
+
+            # 5. Save parent article records in relational DB only if chunks stored
             cleaned_articles: List[CleanedArticle] = []
             for doc in parent_docs:
                 meta = doc.metadata
@@ -102,12 +124,23 @@ class NewsSchedulerManager:
             stats.new_articles_ingested = saved
             stats.duration_seconds = round(time.time() - start_time, 2)
 
-            log_ingestion(db, stats, status="SUCCESS")
-            logger.info(f"Ingestion finished: {saved} articles ({stored_count} chunks) saved in {stats.duration_seconds}s.")
+            # Distinguish Partial vs Full Success
+            if stored_count < len(chunked_docs):
+                stats.status = "PARTIAL_FAILURE"
+                stats.error_message = f"Stored {stored_count}/{len(chunked_docs)} chunks in Qdrant."
+                log_ingestion(db, stats, status="PARTIAL_FAILURE")
+                logger.warning(f"Ingestion finished with PARTIAL_FAILURE: {saved} articles saved, but only {stored_count}/{len(chunked_docs)} chunks stored in Qdrant.")
+            else:
+                stats.status = "SUCCESS"
+                log_ingestion(db, stats, status="SUCCESS")
+                logger.info(f"Ingestion finished successfully: {saved} articles ({stored_count} chunks) saved in {stats.duration_seconds}s.")
+
             return stats
 
         except Exception as e:
             logger.error(f"Error during ingestion pipeline: {e}")
+            stats.status = "FAILED"
+            stats.error_message = str(e)
             stats.duration_seconds = round(time.time() - start_time, 2)
             try:
                 db.rollback()
@@ -234,8 +267,18 @@ if __name__ == "__main__":
     stats = manager.run_ingestion_pipeline(max_articles=5)
     print(f"    Feeds Scanned        : {stats.total_feeds}")
     print(f"    New Articles Ingested: {stats.new_articles_ingested}")
+    print(f"    Chunks Created       : {stats.total_chunks_created}")
+    print(f"    Chunks Stored        : {stats.total_chunks_stored}")
+    print(f"    Pipeline Status      : {stats.status}")
     print(f"    Duration             : {stats.duration_seconds}s")
+    if stats.error_message:
+        print(f"    Error Reason         : {stats.error_message}")
 
     print("\n" + "=" * 70)
-    print("  [SUCCESS] Phase 5 Scheduler & Retention pipeline verified!")
+    if stats.status == "FAILED":
+        print("  [FAILED] Pipeline failed at Qdrant vector storage stage.")
+    elif stats.status == "PARTIAL_FAILURE":
+        print("  [WARNING] Pipeline finished with partial storage.")
+    else:
+        print("  [SUCCESS] Phase 5 Scheduler & Retention pipeline verified!")
     print("=" * 70)

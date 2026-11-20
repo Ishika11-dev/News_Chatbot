@@ -29,30 +29,16 @@ from app.core.langchain_vector_store import get_vector_store
 # ==============================================================================
 # 1. LLM & Prompt Initialization
 # ==============================================================================
-
 def get_rag_llm(temperature: float = 0.2):
-    """Initializes the chat LLM (ChatOllama if running, with seamless Gemini fallback)."""
-    provider = getattr(settings, "LLM_PROVIDER", "ollama").lower()
-    if provider == "ollama" and settings.OLLAMA_BASE_URL:
-        try:
-            import urllib.request
-            # Check if local Ollama server is currently listening
-            urllib.request.urlopen(f"{settings.OLLAMA_BASE_URL}/api/version", timeout=1.0)
-            return ChatOllama(
-                model=settings.OLLAMA_MODEL,
-                base_url=settings.OLLAMA_BASE_URL,
-                temperature=temperature
-            )
-        except Exception as e:
-            print(f"[!] Notice: Ollama at {settings.OLLAMA_BASE_URL} not reachable ({e}). Using Gemini LLM.")
-
+    """Initializes Google Gemini for fast cloud generation."""
     from langchain_google_genai import ChatGoogleGenerativeAI
+
+    model_name = (settings.GEMINI_MODEL or "gemini-2.0-flash").strip()
     return ChatGoogleGenerativeAI(
-        model=settings.GEMINI_MODEL or "gemini-1.5-flash",
+        model=model_name,
         google_api_key=settings.GEMINI_API_KEY,
         temperature=temperature,
     )
-
 
 SYSTEM_PROMPT = """You are a precise, objective News Intelligence AI assistant.
 Your goal is to answer the user's question using ONLY the provided verified news excerpts from the last 30 days.
