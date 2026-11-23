@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # Models & Providers (overridable via .env)
     LLM_PROVIDER: str = "gemini"
     JINA_API_KEY: str = ""  
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
     EMBEDDING_PROVIDER: str = "jina"
     EMBEDDING_MODEL_NAME: str = "jina-embeddings-v3"
     EMBEDDING_DIMENSION: int = 1024

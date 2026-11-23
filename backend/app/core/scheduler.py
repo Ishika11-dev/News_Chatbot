@@ -264,7 +264,7 @@ if __name__ == "__main__":
 
     # 2. Test Ingestion Pipeline with a small batch
     print("\n[3] Testing Ingestion Pipeline (Fresh sync test)...")
-    stats = manager.run_ingestion_pipeline(max_articles=5)
+    stats = manager.run_ingestion_pipeline()
     print(f"    Feeds Scanned        : {stats.total_feeds}")
     print(f"    New Articles Ingested: {stats.new_articles_ingested}")
     print(f"    Chunks Created       : {stats.total_chunks_created}")

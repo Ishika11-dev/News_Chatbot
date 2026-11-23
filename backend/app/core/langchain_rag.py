@@ -33,7 +33,8 @@ def get_rag_llm(temperature: float = 0.2):
     """Initializes Google Gemini for fast cloud generation."""
     from langchain_google_genai import ChatGoogleGenerativeAI
 
-    model_name = (settings.GEMINI_MODEL or "gemini-2.0-flash").strip()
+    model_name = (settings.GEMINI_MODEL ).strip()
+
     return ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=settings.GEMINI_API_KEY,

@@ -3,6 +3,26 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from dateutil import parser as date_parser
 
+# Common timezones found in international and Indian news RSS feeds
+TZINFOS = {
+    "UTC": timezone.utc,
+    "GMT": timezone.utc,
+    "EST": timezone(timedelta(hours=-5)),
+    "EDT": timezone(timedelta(hours=-4)),
+    "CST": timezone(timedelta(hours=-6)),
+    "CDT": timezone(timedelta(hours=-5)),
+    "MST": timezone(timedelta(hours=-7)),
+    "MDT": timezone(timedelta(hours=-6)),
+    "PST": timezone(timedelta(hours=-8)),
+    "PDT": timezone(timedelta(hours=-7)),
+    "BST": timezone(timedelta(hours=1)),
+    "CET": timezone(timedelta(hours=1)),
+    "CEST": timezone(timedelta(hours=2)),
+    "IST": timezone(timedelta(hours=5, minutes=30)),
+    "JST": timezone(timedelta(hours=9)),
+    "AEST": timezone(timedelta(hours=10)),
+}
+
 def parse_date_to_utc(date_str: Optional[str] = None) -> datetime:
     """
     Parses arbitrary date strings from RSS feeds into a timezone-aware UTC datetime.
@@ -12,7 +32,7 @@ def parse_date_to_utc(date_str: Optional[str] = None) -> datetime:
         return datetime.now(timezone.utc)
 
     try:
-        dt = date_parser.parse(date_str)
+        dt = date_parser.parse(date_str, tzinfos=TZINFOS)
         if dt.tzinfo is None:
             # Assume UTC if no timezone is provided
             dt = dt.replace(tzinfo=timezone.utc)
