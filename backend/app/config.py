@@ -44,5 +44,8 @@ class Settings(BaseSettings):
     CLEANUP_INTERVAL_HOURS: int = 24
     TOP_K_RETRIEVAL: int = 6
     SIMILARITY_THRESHOLD: float = 0.35
+    MAX_ARTICLES_PER_INGEST: int = 25              # Safe cap on fresh articles per run
+    INGESTION_BATCH_SIZE: int = 16                 # Jina embedding batch size
+    INGESTION_BATCH_DELAY_SECONDS: float = 1.5     # Pacing delay between batches (seconds)
 
 settings = Settings()

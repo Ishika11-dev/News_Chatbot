@@ -64,8 +64,11 @@ class NewsSchedulerManager:
                 log_ingestion(db, stats, status="SUCCESS")
                 return stats
 
-            if max_articles and len(parent_docs) > max_articles:
-                parent_docs = parent_docs[:max_articles]
+            # Apply post-deduplication cap (guarantees up to MAX_ARTICLES_PER_INGEST fresh articles per run)
+            effective_cap = max_articles if max_articles is not None else getattr(settings, "MAX_ARTICLES_PER_INGEST", 25)
+            if effective_cap and len(parent_docs) > effective_cap:
+                logger.info(f"Capping fresh articles from {len(parent_docs)} to {effective_cap} per run configuration.")
+                parent_docs = parent_docs[:effective_cap]
 
             # 3. Split into LangChain Document chunks
             chunked_docs = self.ingestor.chunk_documents(parent_docs)
@@ -75,11 +78,13 @@ class NewsSchedulerManager:
 
             # 4. Embed and store chunks in Qdrant Vector Store
             try:
-                stored_count = add_documents_to_qdrant(chunked_docs)
+                stored_count, tokens_used = add_documents_to_qdrant(chunked_docs)
                 stats.total_chunks_stored = stored_count
+                stats.total_tokens_used = tokens_used
             except Exception as e:
                 logger.error(f"Vector storage failed: {e}")
                 stats.total_chunks_stored = 0
+                stats.total_tokens_used = 0
                 stats.status = "FAILED"
                 stats.error_message = str(e)
                 stats.duration_seconds = round(time.time() - start_time, 2)
@@ -269,6 +274,7 @@ if __name__ == "__main__":
     print(f"    New Articles Ingested: {stats.new_articles_ingested}")
     print(f"    Chunks Created       : {stats.total_chunks_created}")
     print(f"    Chunks Stored        : {stats.total_chunks_stored}")
+    print(f"    Tokens Consumed      : {stats.total_tokens_used}")
     print(f"    Pipeline Status      : {stats.status}")
     print(f"    Duration             : {stats.duration_seconds}s")
     if stats.error_message:

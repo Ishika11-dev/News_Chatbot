@@ -52,10 +52,11 @@ class IngestionStats(BaseModel):
     total_fetched: int = 0
     new_articles_ingested: int = 0
     duplicates_skipped: int = 0
-    total_chunks_created: int = 0       # <-- NEW
-    total_chunks_stored: int = 0        # <-- NEW
-    status: str = "PENDING"             # <-- SUCCESS, PARTIAL_FAILURE, FAILED
-    error_message: Optional[str] = None # <-- Detailed error reason
+    total_chunks_created: int = 0
+    total_chunks_stored: int = 0
+    total_tokens_used: int = 0          # Real tokens consumed from Jina usage API
+    status: str = "PENDING"             # SUCCESS, PARTIAL_FAILURE, FAILED
+    error_message: Optional[str] = None # Detailed error reason
     failed_feeds: List[str] = []
     duration_seconds: float = 0.0
 

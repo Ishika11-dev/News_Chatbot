@@ -118,7 +118,7 @@ def test_qdrant_storage_and_rag():
         }
     )
 
-    stored_count = add_documents_to_qdrant([test_doc])
+    stored_count, _ = add_documents_to_qdrant([test_doc])
     print(f"Stored {stored_count} chunk in local Qdrant collection.")
 
     # Verify vector search
