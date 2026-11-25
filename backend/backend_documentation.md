@@ -57,7 +57,7 @@ backend/
 │   │
 │   ├── ingestion/                   # Modular News Ingestion Package (Single Source of Truth)
 │   │   ├── feed_fetcher.py          # RSS feed discovery, YAML config loading, HTTP fetch
-│   │   ├── content_extractor.py     # Trafilatura-first extraction with RSS fallback
+│   │   ├── content_extractor.py     # Clean RSS title and executive summary extractor
 │   │   ├── text_cleaner.py          # HTML sanitization and whitespace normalization
 │   │   ├── date_utils.py            # UTC date parsing & 30-day retention gate validation
 │   │   ├── deduplicator.py          # Tracking parameter stripping & SHA-256 deduplication
@@ -179,7 +179,7 @@ The diagram below outlines the dual-track RAG system: the automated ingestion fl
 flowchart TD
     subgraph INGESTION["1. Modular Ingestion Pipeline (app/ingestion/)"]
         A["feeds.yaml (11 RSS Feeds)"] -->|FeedFetcher| B["Raw Feed Entries"]
-        B --> C["text_cleaner.py & content_extractor.py (Trafilatura + RSS Fallback)"]
+        B --> C["text_cleaner.py & content_extractor.py (Clean RSS Summary)"]
         C --> D["deduplicator.py (Canonicalization & SHA-256 ID)"]
         D -->|date_utils.py (Filter: date >= 30d cutoff)| E["document_builder.py (LangChain Documents)"]
         E -->|chunker.py (RecursiveSplitter)| F["Chunked Documents (chunk_size=700, overlap=100)"]
@@ -211,7 +211,7 @@ flowchart TD
 #### Ingestion Architecture (`app/ingestion/`)
 - **RSS Parsing:** Reads feeds from `feeds.yaml` using `FeedFetcher`.
 - **Sanitization:** `text_cleaner.py` strips script, style, iframe, and advertising tags using `BeautifulSoup`.
-- **Extraction:** `content_extractor.py` performs Trafilatura-first scraping with RSS content fallback.
+- **Extraction:** `content_extractor.py` extracts dense, high-signal titles and executive summaries directly from RSS entry payloads with zero web scraping overhead.
 - **Deduplication:** `deduplicator.py` strips tracking parameters (`utm_*`, `fbclid`, `ref`) and hashes canonical URLs with SHA-256.
 - **Document Creation:** `document_builder.py` wraps content into standardized `langchain_core.documents.Document`.
 - **Chunking:** `chunker.py` splits documents with `chunk_size=700` and `chunk_overlap=100`, tagging each chunk with `chunk_id`.

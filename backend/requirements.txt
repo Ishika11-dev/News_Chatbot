@@ -12,7 +12,7 @@ python-dateutil>=2.9.0
 pyyaml>=6.0.2
 requests>=2.32.3
 
-# LangChain Ecosystem
+# LangChain Ecosystem & LLMs
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
@@ -27,8 +27,3 @@ apscheduler>=3.10.4
 
 # Testing
 pytest>=8.3.3
-
-langchain-ollama
-sentence-transformers>=3.0.0
-langchain-huggingface>=0.1.0
-trafilatura>=2.0.0 

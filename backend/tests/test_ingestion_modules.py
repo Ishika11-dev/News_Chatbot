@@ -173,11 +173,11 @@ def test_chunker_splits_and_tags_chunk_id():
 
 
 # ============================================================================
-# 6. Content Extractor Tests (Trafilatura with RSS Fallback)
+# 6. Content Extractor Tests (Clean RSS Summary)
 # ============================================================================
 
 def test_content_extractor_rss_fallback():
-    extractor = ContentExtractor(enable_trafilatura=False)
+    extractor = ContentExtractor()
     fake_entry = {
         "title": "Quantum Computing Breakthrough",
         "summary": "Scientists have achieved quantum advantage with a new chip.",
@@ -186,7 +186,7 @@ def test_content_extractor_rss_fallback():
 
     title, body = extractor.extract_article(fake_entry, link="https://example.com/quantum")
     assert title == "Quantum Computing Breakthrough"
-    assert "Full article body inside content:encoded tag." in body
+    assert "Scientists have achieved quantum advantage with a new chip." in body
 
 
 # ============================================================================

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base backend directory
@@ -44,8 +45,8 @@ class Settings(BaseSettings):
     CLEANUP_INTERVAL_HOURS: int = 24
     TOP_K_RETRIEVAL: int = 6
     SIMILARITY_THRESHOLD: float = 0.35
-    MAX_ARTICLES_PER_INGEST: int = 25              # Safe cap on fresh articles per run
+    MAX_ARTICLES_PER_INGEST: Optional[int] = None  # None = ingest all fresh articles from every link in feeds.yaml
     INGESTION_BATCH_SIZE: int = 16                 # Jina embedding batch size
-    INGESTION_BATCH_DELAY_SECONDS: float = 1.5     # Pacing delay between batches (seconds)
+    INGESTION_BATCH_DELAY_SECONDS: float = 1.0     # Pacing delay between batches (seconds)
 
 settings = Settings()

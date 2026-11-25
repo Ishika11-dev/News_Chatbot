@@ -25,12 +25,11 @@ class NewsIngestionPipeline:
         feeds_config_path: str = "feeds.yaml",
         retention_days: int = 30,
         chunk_size: int = 700,
-        chunk_overlap: int = 100,
-        enable_trafilatura: bool = True
+        chunk_overlap: int = 100
     ):
         self.retention_days = retention_days
         self.fetcher = FeedFetcher(config_path=feeds_config_path)
-        self.extractor = ContentExtractor(enable_trafilatura=enable_trafilatura)
+        self.extractor = ContentExtractor()
         self.builder = DocumentBuilder()
         self.chunker = ArticleChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.text_splitter = self.chunker.text_splitter
@@ -84,7 +83,7 @@ class NewsIngestionPipeline:
                 if iso_date is None or epoch_ts is None or not is_within_retention_window(epoch_ts, retention_days=self.retention_days):
                     continue
 
-                # Content Extraction (Trafilatura-first with RSS fallback)
+                # Content Extraction (Clean RSS Title + Summary)
                 title, body = self.extractor.extract_article(entry, link=clean_url)
 
                 if len(title) < 5 or len(body) < 30:

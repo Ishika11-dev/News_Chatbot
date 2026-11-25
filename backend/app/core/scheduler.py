@@ -64,8 +64,8 @@ class NewsSchedulerManager:
                 log_ingestion(db, stats, status="SUCCESS")
                 return stats
 
-            # Apply post-deduplication cap (guarantees up to MAX_ARTICLES_PER_INGEST fresh articles per run)
-            effective_cap = max_articles if max_articles is not None else getattr(settings, "MAX_ARTICLES_PER_INGEST", 25)
+            # Apply post-deduplication cap if explicitly configured (None = ingest all feeds)
+            effective_cap = max_articles if max_articles is not None else getattr(settings, "MAX_ARTICLES_PER_INGEST", None)
             if effective_cap and len(parent_docs) > effective_cap:
                 logger.info(f"Capping fresh articles from {len(parent_docs)} to {effective_cap} per run configuration.")
                 parent_docs = parent_docs[:effective_cap]
