@@ -12,7 +12,9 @@ import {
 import type { AdminActionFeedback } from "./types/admin";
 
 export function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
   const [activeTab, setActiveTab] = useState<"chat" | "trending">("chat");
   const [adminFeedback, setAdminFeedback] =
     useState<AdminActionFeedback | null>(null);

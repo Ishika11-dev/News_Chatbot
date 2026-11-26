@@ -42,6 +42,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTriggerIngest,
   onTriggerCleanup,
 }) => {
+  const closeOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
   return (
     <>
       {/* Mobile Backdrop */}
@@ -54,10 +60,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col w-64 bg-slate-50 border-r border-slate-200 transform transition-transform duration-200 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        className={`fixed md:static inset-y-0 left-0 z-50 shrink-0 overflow-hidden bg-slate-50 transition-all duration-200 ease-in-out ${
+          isOpen
+            ? "w-64 translate-x-0 border-r border-slate-200"
+            : "w-64 -translate-x-full md:w-0 md:translate-x-0 border-r-0 pointer-events-none md:pointer-events-none"
         }`}
       >
+        <div className="flex flex-col w-64 h-full">
         {/* Top Header & New Chat Button */}
         <div className="p-3 border-b border-slate-200 space-y-2.5">
           <div className="flex items-center justify-between px-1">
@@ -83,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => {
               onNewChat();
               onSelectTab("chat");
-              onClose();
+              closeOnMobile();
             }}
             className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white hover:bg-slate-100 text-slate-800 font-medium text-xs border border-slate-200 shadow-xs transition-colors cursor-pointer"
           >
@@ -101,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={() => {
                 onSelectTab("chat");
-                onClose();
+                closeOnMobile();
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 activeTab === "chat"
@@ -115,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={() => {
                 onSelectTab("trending");
-                onClose();
+                closeOnMobile();
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 activeTab === "trending"
@@ -150,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => {
                       onSelectSession(s.id);
                       onSelectTab("chat");
-                      onClose();
+                      closeOnMobile();
                     }}
                     className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
                       isActive
@@ -191,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             disabled={adminRunningAction !== null}
             onClick={() => {
               onTriggerIngest();
-              onClose();
+              closeOnMobile();
             }}
             className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-blue-50/70 text-slate-700 hover:text-blue-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -210,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             disabled={adminRunningAction !== null}
             onClick={() => {
               onTriggerCleanup();
-              onClose();
+              closeOnMobile();
             }}
             className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-amber-50/70 text-slate-700 hover:text-amber-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -223,6 +232,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>30d Retention Cleanup</span>
             </span>
           </button>
+        </div>
         </div>
       </aside>
     </>
