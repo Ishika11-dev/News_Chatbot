@@ -2,6 +2,7 @@ import React from "react";
 import { Menu, Plus } from "lucide-react";
 import type { AdminActionFeedback } from "../../types/admin";
 import { AdminActionBanner } from "../admin/AdminActionBanner";
+import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 
 interface MainLayoutProps {
   onToggleSidebar: () => void;
@@ -38,8 +39,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </span>
         </div>
 
-        {/* Right: New Chat Shortcut */}
+        {/* Right: Connection Status & New Chat Shortcut */}
         <div className="flex items-center gap-2">
+          <ConnectionStatusBadge />
           {hasMessages && (
             <button
               onClick={onNewChat}
