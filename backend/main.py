@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     # Pre-warm Embedding Model & RAG Engine to eliminate first-request cold start latency
     logger.info("Pre-warming Vector Store and RAG Engine...")
     try:
-        from app.api.routes_chat import get_rag_engine
+        from app.services.chat_service import get_rag_engine
         get_rag_engine()
         logger.info("RAG Engine & Embeddings pre-warmed successfully.")
     except Exception as e:
