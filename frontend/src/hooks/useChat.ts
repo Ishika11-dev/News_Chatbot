@@ -32,7 +32,14 @@ export function useChat() {
     setSessions(getSavedSessions());
   }, []);
 
-  // Load trending news on mount
+  // Load trending news on mount & provide refresh helper
+  const refreshTrendingNews = useCallback(async () => {
+    const articles = await fetchRecentNews(8);
+    if (articles && articles.length > 0) {
+      setTrendingNews(articles);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     fetchRecentNews(8).then((articles) => {
@@ -172,6 +179,7 @@ export function useChat() {
     currentSessionId,
     sessions,
     trendingNews,
+    refreshTrendingNews,
     sendMessage,
     startNewChat,
     selectSession,

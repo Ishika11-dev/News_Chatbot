@@ -1,10 +1,14 @@
 import React from "react";
 import { Menu, Plus } from "lucide-react";
+import type { AdminActionFeedback } from "../../types/admin";
+import { AdminActionBanner } from "../admin/AdminActionBanner";
 
 interface MainLayoutProps {
   onToggleSidebar: () => void;
   onNewChat: () => void;
   hasMessages: boolean;
+  adminFeedback: AdminActionFeedback | null;
+  onDismissAdminFeedback: () => void;
   children: React.ReactNode;
 }
 
@@ -12,6 +16,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onToggleSidebar,
   onNewChat,
   hasMessages,
+  adminFeedback,
+  onDismissAdminFeedback,
   children,
 }) => {
   return (
@@ -49,6 +55,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden relative bg-white">
+        <AdminActionBanner
+          feedback={adminFeedback}
+          onDismiss={onDismissAdminFeedback}
+        />
         {children}
       </main>
     </div>

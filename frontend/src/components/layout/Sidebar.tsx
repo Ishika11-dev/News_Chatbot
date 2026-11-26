@@ -6,8 +6,12 @@ import {
   Trash2,
   Newspaper,
   X,
+  RefreshCw,
+  DatabaseZap,
+  Loader2,
 } from "lucide-react";
 import type { ChatSession } from "../../types/chat";
+import type { AdminActionType } from "../../types/admin";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,6 +23,9 @@ interface SidebarProps {
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string, e: React.MouseEvent) => void;
+  adminRunningAction: AdminActionType | null;
+  onTriggerIngest: () => void;
+  onTriggerCleanup: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,6 +38,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewChat,
   onSelectSession,
   onDeleteSession,
+  adminRunningAction,
+  onTriggerIngest,
+  onTriggerCleanup,
 }) => {
   return (
     <>
@@ -169,6 +179,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
           )}
+        </div>
+
+        {/* Pipeline Admin Controls */}
+        <div className="p-3 border-t border-slate-200 bg-slate-100/60 space-y-1.5">
+          <div className="px-0.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            Pipeline Controls
+          </div>
+          <button
+            type="button"
+            disabled={adminRunningAction !== null}
+            onClick={() => {
+              onTriggerIngest();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-blue-50/70 text-slate-700 hover:text-blue-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span className="flex items-center gap-2">
+              {adminRunningAction === "ingest" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+              )}
+              <span>Manual Ingestion</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            disabled={adminRunningAction !== null}
+            onClick={() => {
+              onTriggerCleanup();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-amber-50/70 text-slate-700 hover:text-amber-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span className="flex items-center gap-2">
+              {adminRunningAction === "cleanup" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+              ) : (
+                <DatabaseZap className="w-3.5 h-3.5 text-amber-600" />
+              )}
+              <span>30d Retention Cleanup</span>
+            </span>
+          </button>
         </div>
       </aside>
     </>
