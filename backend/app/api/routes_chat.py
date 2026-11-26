@@ -22,3 +22,8 @@ def stream_chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
 def get_chat_history(session_id: str, db: Session = Depends(get_db)):
     """Retrieves previous messages for a conversation session."""
     return chat_controller.handle_chat_history(db=db, session_id=session_id)
+
+@router.delete("/history/{session_id}")
+def delete_chat_history(session_id: str, db: Session = Depends(get_db)):
+    """Deletes a conversation session and all of its stored messages."""
+    return chat_controller.handle_delete_chat_history(db=db, session_id=session_id)

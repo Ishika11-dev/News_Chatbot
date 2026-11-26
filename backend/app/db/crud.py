@@ -101,3 +101,21 @@ def save_chat_message(
     db.add(msg)
     db.commit()
 
+
+def delete_chat_session(db: Session, session_id: str) -> int:
+    """Deletes a chat session and all associated messages. Returns deleted message count."""
+    session = db.query(ChatSessionModel).filter(
+        ChatSessionModel.session_id == session_id
+    ).first()
+    if not session:
+        deleted_messages = db.query(ChatMessageModel).filter(
+            ChatMessageModel.session_id == session_id
+        ).delete(synchronize_session=False)
+        db.commit()
+        return deleted_messages
+
+    deleted_messages = len(session.messages)
+    db.delete(session)
+    db.commit()
+    return deleted_messages
+

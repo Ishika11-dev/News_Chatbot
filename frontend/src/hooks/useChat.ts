@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { sendChatMessage } from "../services/chatService";
 import {
   fetchChatHistory,
+  deleteChatHistory,
   getSavedSessions,
   persistSessions,
 } from "../services/historyService";
@@ -77,10 +78,11 @@ export function useChat() {
     [loading]
   );
 
-  // Delete a session
+  // Delete a session (both locally and in backend DB)
   const deleteSession = useCallback(
-    (sessionId: string, e?: React.MouseEvent) => {
+    async (sessionId: string, e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
+
       setSessions((prev) => {
         const updated = prev.filter((s) => s.id !== sessionId);
         persistSessions(updated);
@@ -89,6 +91,12 @@ export function useChat() {
 
       if (currentSessionId === sessionId) {
         startNewChat();
+      }
+
+      try {
+        await deleteChatHistory(sessionId);
+      } catch (err) {
+        console.warn("Could not delete chat history from server:", err);
       }
     },
     [currentSessionId, startNewChat]

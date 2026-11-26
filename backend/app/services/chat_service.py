@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.langchain_rag import LangChainNewsRAG
-from app.db.crud import save_chat_message
+from app.db.crud import save_chat_message, delete_chat_session
 from app.db.models import ChatMessageModel
 from app.schemas.chat import ChatRequest, ChatResponse, SourceCitation
 
@@ -98,4 +98,14 @@ def get_session_history(db: Session, session_id: str) -> List[Dict[str, Any]]:
         }
         for m in messages
     ]
+
+
+def delete_session_history(db: Session, session_id: str) -> Dict[str, Any]:
+    """Deletes a chat session and its messages from the database."""
+    deleted_messages = delete_chat_session(db=db, session_id=session_id)
+    return {
+        "status": "DELETED",
+        "session_id": session_id,
+        "deleted_messages": deleted_messages,
+    }
 

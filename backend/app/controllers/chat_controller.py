@@ -21,3 +21,8 @@ def handle_chat_history(db: Session, session_id: str) -> List[Dict[str, Any]]:
     """Handles chat history retrieval for a given session."""
     return chat_service.get_session_history(db=db, session_id=session_id)
 
+
+def handle_delete_chat_history(db: Session, session_id: str) -> Dict[str, Any]:
+    """Handles deletion of a chat session and its history."""
+    return chat_service.delete_session_history(db=db, session_id=session_id)
+

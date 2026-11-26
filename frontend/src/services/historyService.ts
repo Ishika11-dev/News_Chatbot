@@ -20,6 +20,10 @@ export const fetchChatHistory = async (sessionId: string): Promise<ChatMessage[]
   }
 };
 
+export const deleteChatHistory = async (sessionId: string): Promise<void> => {
+  await axios.delete(`${API_BASE_URL}/api/chat/history/${sessionId}`);
+};
+
 export const getSavedSessions = (): ChatSession[] => {
   try {
     const data = localStorage.getItem(SESSIONS_STORAGE_KEY);
