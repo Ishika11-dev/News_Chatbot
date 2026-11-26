@@ -39,12 +39,12 @@ export const AdminActionBanner: React.FC<AdminActionBannerProps> = ({
       ));
 
   const containerStyle = feedback.loading
-    ? "bg-blue-50/90 border-blue-200 text-blue-900"
+    ? "bg-blue-50/90 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100"
     : isFailed
-    ? "bg-rose-50/90 border-rose-200 text-rose-900"
+    ? "bg-rose-50/90 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100"
     : isWarning
-    ? "bg-amber-50/90 border-amber-200 text-amber-900"
-    : "bg-emerald-50/90 border-emerald-200 text-emerald-900";
+    ? "bg-amber-50/90 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100"
+    : "bg-emerald-50/90 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100";
 
   const rawPayload = feedback.ingestResponse ?? feedback.cleanupResponse ?? null;
 
@@ -69,7 +69,7 @@ export const AdminActionBanner: React.FC<AdminActionBannerProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold">{actionLabel}</span>
                 {!feedback.loading && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/70 border border-black/10">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10">
                     {feedback.error
                       ? "ERROR"
                       : ingestStats?.status ??
@@ -98,31 +98,31 @@ export const AdminActionBanner: React.FC<AdminActionBannerProps> = ({
                     {feedback.ingestResponse.message}
                   </p>
                   <div className="flex flex-wrap gap-2 text-[11px]">
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Feeds: <strong>{ingestStats.total_feeds}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Fetched: <strong>{ingestStats.total_fetched}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       New Articles:{" "}
                       <strong>{ingestStats.new_articles_ingested}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Duplicates Skipped:{" "}
                       <strong>{ingestStats.duplicates_skipped}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Chunks Stored:{" "}
                       <strong>
                         {ingestStats.total_chunks_stored}/
                         {ingestStats.total_chunks_created}
                       </strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Tokens: <strong>{ingestStats.total_tokens_used}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Duration: <strong>{ingestStats.duration_seconds}s</strong>
                     </span>
                   </div>
@@ -145,15 +145,15 @@ export const AdminActionBanner: React.FC<AdminActionBannerProps> = ({
                     {feedback.cleanupResponse.message}
                   </p>
                   <div className="flex flex-wrap gap-2 text-[11px]">
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Deleted DB Articles:{" "}
                       <strong>{cleanupResult.deleted_db_articles}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Qdrant Status:{" "}
                       <strong>{cleanupResult.qdrant_status}</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/75 border border-black/5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900/70 border border-black/5 dark:border-white/10">
                       Cutoff Date:{" "}
                       <strong>
                         {new Date(cleanupResult.cutoff_date).toLocaleString()}

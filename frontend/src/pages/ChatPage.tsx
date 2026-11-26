@@ -17,14 +17,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   onSelectPrompt,
 }) => {
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-white">
+    <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-white dark:bg-slate-950 transition-colors">
       <ChatWindow
         messages={messages}
         loading={loading}
         onSelectPrompt={onSelectPrompt}
       />
 
-      <div className="border-t border-slate-200 bg-white/95 backdrop-blur-xs pt-2">
+      <div className="border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs pt-2">
         <ChatInput onSendMessage={onSendMessage} disabled={loading} />
       </div>
     </div>

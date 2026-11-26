@@ -69,7 +69,7 @@ export const ConnectionStatusBadge: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
         title="System connection status (Postgres & Qdrant)"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
@@ -77,16 +77,16 @@ export const ConnectionStatusBadge: React.FC = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-white border border-slate-200 shadow-lg p-3 z-50 text-xs space-y-2.5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="font-semibold text-slate-800">
+        <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg p-3 z-50 text-xs space-y-2.5">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+            <span className="font-semibold text-slate-800 dark:text-slate-100">
               Connection Status
             </span>
             <button
               type="button"
               onClick={checkHealth}
               disabled={checking}
-              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 cursor-pointer"
               title="Refresh connection status"
             >
               <RefreshCw
@@ -123,7 +123,7 @@ export const ConnectionStatusBadge: React.FC = () => {
           </div>
 
           {health?.timestamp && (
-            <div className="pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500">
               Last checked: {new Date(health.timestamp).toLocaleTimeString()}
             </div>
           )}
@@ -142,20 +142,20 @@ interface StatusRowProps {
 const StatusRow: React.FC<StatusRowProps> = ({ label, ok, error }) => (
   <div className="space-y-0.5">
     <div className="flex items-center justify-between">
-      <span className="text-slate-700 font-medium">{label}</span>
+      <span className="text-slate-700 dark:text-slate-200 font-medium">{label}</span>
       <span className="inline-flex items-center gap-1.5 text-[11px]">
         <span
           className={`w-2 h-2 rounded-full ${
             ok ? "bg-emerald-500" : "bg-rose-500"
           }`}
         />
-        <span className={ok ? "text-emerald-700" : "text-rose-600"}>
+        <span className={ok ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
           {ok ? "Active" : "Inactive"}
         </span>
       </span>
     </div>
     {!ok && error && (
-      <p className="text-[10px] text-rose-500 truncate" title={error}>
+      <p className="text-[10px] text-rose-500 dark:text-rose-400 truncate" title={error}>
         {error}
       </p>
     )}

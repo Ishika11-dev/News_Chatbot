@@ -54,33 +54,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-slate-900/30 z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-slate-900/30 dark:bg-black/60 z-40 md:hidden transition-opacity"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 shrink-0 overflow-hidden bg-slate-50 transition-all duration-200 ease-in-out ${
+        className={`fixed md:static inset-y-0 left-0 z-50 shrink-0 overflow-hidden bg-slate-50 dark:bg-slate-900 transition-all duration-200 ease-in-out ${
           isOpen
-            ? "w-64 translate-x-0 border-r border-slate-200"
+            ? "w-64 translate-x-0 border-r border-slate-200 dark:border-slate-800"
             : "w-64 -translate-x-full md:w-0 md:translate-x-0 border-r-0 pointer-events-none md:pointer-events-none"
         }`}
       >
         <div className="flex flex-col w-64 h-full">
         {/* Top Header & New Chat Button */}
-        <div className="p-3 border-b border-slate-200 space-y-2.5">
+        <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
                 <Newspaper className="w-3.5 h-3.5" />
               </div>
-              <span className="font-semibold text-xs text-slate-800 tracking-tight">
+              <span className="font-semibold text-xs text-slate-800 dark:text-slate-100 tracking-tight">
                 News Intelligence
               </span>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-slate-500 hover:text-slate-800 md:hidden hover:bg-slate-200/60 cursor-pointer"
+              className="p-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 md:hidden hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
               title="Close sidebar"
             >
               <X className="w-4 h-4" />
@@ -94,10 +94,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectTab("chat");
               closeOnMobile();
             }}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white hover:bg-slate-100 text-slate-800 font-medium text-xs border border-slate-200 shadow-xs transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-medium text-xs border border-slate-200 dark:border-slate-700 shadow-xs transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Plus className="w-3.5 h-3.5 text-blue-600" />
+              <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>New Chat</span>
             </div>
             <span className="text-[10px] text-slate-400 font-mono">
@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* View Switcher: Chat vs Trending */}
-          <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-200/70 rounded-lg text-xs">
+          <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-200/70 dark:bg-slate-800 rounded-lg text-xs">
             <button
               onClick={() => {
                 onSelectTab("chat");
@@ -114,8 +114,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 activeTab === "chat"
-                  ? "bg-white text-blue-600 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -128,8 +128,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 activeTab === "trending"
-                  ? "bg-white text-blue-600 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
@@ -140,13 +140,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Scrollable Chat History */}
         <div className="flex-1 overflow-y-auto px-2 py-3">
-          <div className="px-2 pb-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="px-2 pb-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             <span>Recent Chats</span>
-            <span className="text-slate-400">{sessions.length}</span>
+            <span className="text-slate-400 dark:text-slate-500">{sessions.length}</span>
           </div>
 
           {sessions.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-slate-400 italic text-left">
+            <p className="px-2 py-3 text-xs text-slate-400 dark:text-slate-500 italic text-left">
               No saved chats yet.
             </p>
           ) : (
@@ -163,14 +163,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
                       isActive
-                        ? "bg-blue-50 text-blue-700 font-medium border border-blue-200"
-                        : "text-slate-700 hover:bg-slate-100"
+                        ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-800"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
                   >
                     <div className="flex items-center gap-2 overflow-hidden">
                       <MessageSquare
                         className={`w-3.5 h-3.5 shrink-0 ${
-                          isActive ? "text-blue-600" : "text-slate-400"
+                          isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                         }`}
                       />
                       <span className="truncate">{s.title || "Conversation"}</span>
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     <button
                       onClick={(e) => onDeleteSession(s.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 text-slate-400 transition-opacity cursor-pointer"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-opacity cursor-pointer"
                       title="Delete chat"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -191,8 +191,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Pipeline Admin Controls */}
-        <div className="p-3 border-t border-slate-200 bg-slate-100/60 space-y-1.5">
-          <div className="px-0.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/80 space-y-1.5">
+          <div className="px-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Pipeline Controls
           </div>
           <button
@@ -202,13 +202,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onTriggerIngest();
               closeOnMobile();
             }}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-blue-50/70 text-slate-700 hover:text-blue-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50/70 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-blue-400 text-xs font-medium border border-slate-200 dark:border-slate-700 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {adminRunningAction === "ingest" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
               ) : (
-                <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                <RefreshCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               )}
               <span>Manual Ingestion</span>
             </span>
@@ -221,13 +221,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onTriggerCleanup();
               closeOnMobile();
             }}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white hover:bg-amber-50/70 text-slate-700 hover:text-amber-700 text-xs font-medium border border-slate-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-amber-50/70 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:text-amber-700 dark:hover:text-amber-400 text-xs font-medium border border-slate-200 dark:border-slate-700 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {adminRunningAction === "cleanup" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400" />
               ) : (
-                <DatabaseZap className="w-3.5 h-3.5 text-amber-600" />
+                <DatabaseZap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               )}
               <span>30d Retention Cleanup</span>
             </span>

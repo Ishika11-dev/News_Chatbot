@@ -15,9 +15,18 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : true
   );
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("news_intelligence_theme") === "dark";
+  });
   const [activeTab, setActiveTab] = useState<"chat" | "trending">("chat");
   const [adminFeedback, setAdminFeedback] =
     useState<AdminActionFeedback | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("news_intelligence_theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
 
   const {
     messages,
@@ -98,7 +107,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden">
+    <div className="flex h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans overflow-hidden transition-colors">
       {/* Clean Minimalist Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -131,6 +140,8 @@ export function App() {
           setActiveTab("chat");
         }}
         hasMessages={messages.length > 0}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
         adminFeedback={adminFeedback}
         onDismissAdminFeedback={() => setAdminFeedback(null)}
       >

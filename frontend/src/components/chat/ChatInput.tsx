@@ -45,7 +45,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = 
     <div className="w-full max-w-3xl mx-auto px-4 pb-4">
       <form
         onSubmit={handleSubmit}
-        className="relative flex items-end gap-2 p-2.5 rounded-2xl border border-slate-300 bg-white shadow-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all"
+        className="relative flex items-end gap-2 p-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all"
       >
         <textarea
           ref={textareaRef}
@@ -55,7 +55,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = 
           disabled={disabled}
           placeholder="Ask about recent news... (Press Enter to send)"
           rows={1}
-          className="flex-1 max-h-36 p-1.5 bg-transparent text-slate-800 placeholder-slate-400 text-sm resize-none focus:outline-none leading-relaxed"
+          className="flex-1 max-h-36 p-1.5 bg-transparent text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm resize-none focus:outline-none leading-relaxed"
         />
 
         <button
