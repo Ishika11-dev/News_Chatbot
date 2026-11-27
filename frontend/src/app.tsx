@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useChat } from "./hooks/useChat";
 import { useTrendingNews } from "./hooks/useTrendingNews";
+import { useCategories } from "./hooks/useCategories";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ChatPage } from "./pages/ChatPage";
@@ -40,6 +41,7 @@ export function App() {
     deleteSession,
   } = useChat();
 
+  const categories = useCategories();
   const trending = useTrendingNews(activeTab === "trending");
 
   const handleRunAdminAction = useCallback(
@@ -158,6 +160,8 @@ export function App() {
         ) : (
           <TrendingPage
             articles={trending.articles}
+            categories={categories}
+            selectedCategory={trending.selectedCategory}
             page={trending.page}
             pageSize={trending.pageSize}
             totalItems={trending.totalItems}
@@ -167,6 +171,7 @@ export function App() {
             search={trending.search}
             loading={trending.loading}
             error={trending.error}
+            onSelectCategory={trending.setSelectedCategory}
             onSearchChange={trending.setSearch}
             onPageChange={trending.goToPage}
             onRefresh={trending.refreshTrending}

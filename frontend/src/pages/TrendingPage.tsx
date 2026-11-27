@@ -4,6 +4,8 @@ import { TrendingNews } from "../components/trending/TrendingNews";
 
 interface TrendingPageProps {
   articles: TrendingArticle[];
+  categories: string[];
+  selectedCategory: string;
   page: number;
   pageSize: number;
   totalItems: number;
@@ -13,6 +15,7 @@ interface TrendingPageProps {
   search: string;
   loading: boolean;
   error: string | null;
+  onSelectCategory: (category: string) => void;
   onSearchChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
@@ -21,6 +24,8 @@ interface TrendingPageProps {
 
 export const TrendingPage: React.FC<TrendingPageProps> = ({
   articles,
+  categories,
+  selectedCategory,
   page,
   pageSize,
   totalItems,
@@ -30,6 +35,7 @@ export const TrendingPage: React.FC<TrendingPageProps> = ({
   search,
   loading,
   error,
+  onSelectCategory,
   onSearchChange,
   onPageChange,
   onRefresh,
@@ -39,6 +45,8 @@ export const TrendingPage: React.FC<TrendingPageProps> = ({
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <TrendingNews
         articles={articles}
+        categories={categories}
+        selectedCategory={selectedCategory}
         page={page}
         pageSize={pageSize}
         totalItems={totalItems}
@@ -48,6 +56,7 @@ export const TrendingPage: React.FC<TrendingPageProps> = ({
         search={search}
         loading={loading}
         error={error}
+        onSelectCategory={onSelectCategory}
         onSearchChange={onSearchChange}
         onPageChange={onPageChange}
         onRefresh={onRefresh}

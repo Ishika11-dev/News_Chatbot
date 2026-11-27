@@ -6,6 +6,15 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
+export const DEFAULT_NEWS_CATEGORIES: string[] = [
+  "All",
+  "Technology",
+  "Business",
+  "World News",
+  "Politics",
+  "Science",
+];
+
 const FALLBACK_ARTICLES: TrendingArticle[] = [
   {
     article_id: "preview-1",
@@ -87,5 +96,20 @@ export const fetchTrendingNewsPage = async (
     { params }
   );
   return response.data;
+};
+
+export const fetchNewsCategories = async (): Promise<string[]> => {
+  try {
+    const response = await axios.get<string[]>(
+      `${API_BASE_URL}/api/news/categories`
+    );
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      return response.data;
+    }
+    return DEFAULT_NEWS_CATEGORIES;
+  } catch (error) {
+    console.warn("Could not fetch news categories, using defaults:", error);
+    return DEFAULT_NEWS_CATEGORIES;
+  }
 };
 

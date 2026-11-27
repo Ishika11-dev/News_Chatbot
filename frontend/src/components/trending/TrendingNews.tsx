@@ -16,6 +16,8 @@ import { formatDate } from "../../utils/formatdate";
 
 interface TrendingNewsProps {
   articles: TrendingArticle[];
+  categories: string[];
+  selectedCategory: string;
   page: number;
   pageSize: number;
   totalItems: number;
@@ -25,6 +27,7 @@ interface TrendingNewsProps {
   search: string;
   loading: boolean;
   error: string | null;
+  onSelectCategory: (category: string) => void;
   onSearchChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
@@ -49,6 +52,8 @@ const getPageNumbers = (current: number, total: number): (number | "ellipsis")[]
 
 export const TrendingNews: React.FC<TrendingNewsProps> = ({
   articles,
+  categories,
+  selectedCategory,
   page,
   pageSize,
   totalItems,
@@ -58,6 +63,7 @@ export const TrendingNews: React.FC<TrendingNewsProps> = ({
   search,
   loading,
   error,
+  onSelectCategory,
   onSearchChange,
   onPageChange,
   onRefresh,
@@ -70,6 +76,11 @@ export const TrendingNews: React.FC<TrendingNewsProps> = ({
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleCategoryClick = (category: string) => {
+    onSelectCategory(category);
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const startItem = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const endItem = Math.min(page * pageSize, totalItems);
   const pageNumbers = getPageNumbers(page, totalPages);
@@ -79,44 +90,68 @@ export const TrendingNews: React.FC<TrendingNewsProps> = ({
       ref={scrollContainerRef}
       className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-4xl w-full mx-auto space-y-6"
     >
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold text-sm">
-            <Flame className="w-4 h-4 text-amber-500" />
-            <span>Recent & Trending News (Past 30 Days)</span>
-            {totalItems > 0 && (
-              <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {totalItems} total
-              </span>
-            )}
+      {/* Top Banner & Category Filter Pills */}
+      <div className="space-y-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold text-sm">
+              <Flame className="w-4 h-4 text-amber-500" />
+              <span>Recent & Trending News (Past 30 Days)</span>
+              {totalItems > 0 && (
+                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {totalItems} total
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              All verified articles stored in your knowledge base ({pageSize} per page). Click "Ask AI" to query any article.
+            </p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            All verified articles stored in your knowledge base ({pageSize} per page). Click "Ask AI" to query any article.
-          </p>
+
+          {/* Search Filter & Refresh */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search all recent news..."
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+              title="Refresh news list"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
 
-        {/* Search Filter & Refresh */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search all recent news..."
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-            title="Refresh news list"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          </button>
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {categories.map((cat) => {
+            const isSelected = cat === selectedCategory;
+            return (
+              <button
+                key={cat}
+                type="button"
+                disabled={loading}
+                onClick={() => handleCategoryClick(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer disabled:opacity-60 ${
+                  isSelected
+                    ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -159,12 +194,19 @@ export const TrendingNews: React.FC<TrendingNewsProps> = ({
                 className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-xs transition-all flex flex-col justify-between shadow-xs cursor-pointer group"
               >
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
-                      {article.publisher || "News"}
-                    </span>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-blue-600 dark:text-blue-400 truncate">
+                        {article.publisher || "News"}
+                      </span>
+                      {article.category && (
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] border border-slate-200 dark:border-slate-700 shrink-0">
+                          {article.category}
+                        </span>
+                      )}
+                    </div>
                     {article.published_at && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+                      <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
                         <Calendar className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                         {formatDate(article.published_at)}
                       </span>
