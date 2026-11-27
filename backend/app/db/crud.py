@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from datetime import datetime
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Tuple
 
 from app.db.models import ArticleModel, IngestionLogModel, ChatSessionModel, ChatMessageModel
 from app.schemas.news import CleanedArticle, IngestionStats
@@ -38,22 +38,92 @@ def save_articles(db: Session, articles: List[CleanedArticle]) -> int:
     db.commit()
     return saved_count
 
-def get_recent_articles(
+def _build_recent_articles_query(
     db: Session,
     cutoff_timestamp: float,
     category: Optional[str] = None,
-    limit: int = 20,
-    offset: int = 0
-) -> List[ArticleModel]:
-    """Retrieves recent articles published within the 30-day window."""
+    search: Optional[str] = None,
+):
+    """Builds a base query for non-expired articles within the 30-day window."""
     query = db.query(ArticleModel).filter(
         ArticleModel.published_timestamp >= cutoff_timestamp,
         ArticleModel.is_expired == False
     )
     if category and category.lower() != "all":
         query = query.filter(ArticleModel.category == category)
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                ArticleModel.title.ilike(pattern),
+                ArticleModel.publisher.ilike(pattern),
+                ArticleModel.summary.ilike(pattern),
+            )
+        )
+    return query
 
+
+def get_recent_articles(
+    db: Session,
+    cutoff_timestamp: float,
+    category: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+    search: Optional[str] = None,
+) -> List[ArticleModel]:
+    """Retrieves recent articles published within the 30-day window."""
+    query = _build_recent_articles_query(
+        db=db,
+        cutoff_timestamp=cutoff_timestamp,
+        category=category,
+        search=search,
+    )
     return query.order_by(desc(ArticleModel.published_timestamp)).offset(offset).limit(limit).all()
+
+
+def get_recent_articles_paginated(
+    db: Session,
+    cutoff_timestamp: float,
+    page: int = 1,
+    page_size: int = 8,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+) -> Tuple[List[ArticleModel], int]:
+    """Retrieves paginated recent articles and total matching count."""
+    query = _build_recent_articles_query(
+        db=db,
+        cutoff_timestamp=cutoff_timestamp,
+        category=category,
+        search=search,
+    )
+    total_items = query.count()
+    offset = (page - 1) * page_size
+    items = (
+        query.order_by(desc(ArticleModel.published_timestamp))
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+    return items, total_items
+
+
+def count_recent_articles(
+    db: Session,
+    cutoff_timestamp: float,
+    category: Optional[str] = None
+) -> int:
+    """Counts recent, non-expired articles matching the filters."""
+
+    query = db.query(ArticleModel).filter(
+        ArticleModel.published_timestamp >= cutoff_timestamp,
+        ArticleModel.is_expired == False
+    )
+
+    if category and category.lower() != "all":
+        query = query.filter(ArticleModel.category == category)
+
+    return query.count()
+
 
 def delete_expired_articles(db: Session, cutoff_timestamp: float) -> int:
     """Purges articles older than 30 days from the database."""

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useChat } from "./hooks/useChat";
+import { useTrendingNews } from "./hooks/useTrendingNews";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ChatPage } from "./pages/ChatPage";
@@ -33,13 +34,13 @@ export function App() {
     loading,
     currentSessionId,
     sessions,
-    trendingNews,
-    refreshTrendingNews,
     sendMessage,
     startNewChat,
     selectSession,
     deleteSession,
   } = useChat();
+
+  const trending = useTrendingNews(activeTab === "trending");
 
   const handleRunAdminAction = useCallback(
     async (action: "ingest" | "cleanup") => {
@@ -69,7 +70,9 @@ export function App() {
             timestamp: new Date().toLocaleTimeString(),
           });
         }
-        await refreshTrendingNews();
+        if (activeTab === "trending") {
+          trending.refreshTrending();
+        }
       } catch (err) {
         const errorMessage = axios.isAxiosError(err)
           ? err.response?.data?.detail || err.message
@@ -85,7 +88,7 @@ export function App() {
         });
       }
     },
-    [adminFeedback?.loading, refreshTrendingNews]
+    [adminFeedback?.loading, activeTab, trending]
   );
 
   // Keyboard shortcut Ctrl+K or Cmd+K to start a new chat
@@ -154,7 +157,19 @@ export function App() {
           />
         ) : (
           <TrendingPage
-            articles={trendingNews}
+            articles={trending.articles}
+            page={trending.page}
+            pageSize={trending.pageSize}
+            totalItems={trending.totalItems}
+            totalPages={trending.totalPages}
+            hasNext={trending.hasNext}
+            hasPrev={trending.hasPrev}
+            search={trending.search}
+            loading={trending.loading}
+            error={trending.error}
+            onSearchChange={trending.setSearch}
+            onPageChange={trending.goToPage}
+            onRefresh={trending.refreshTrending}
             onAskAboutArticle={handleAskAboutNews}
           />
         )}

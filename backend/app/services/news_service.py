@@ -1,8 +1,9 @@
+from math import ceil
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.crud import get_recent_articles
+from app.db.crud import get_recent_articles, get_recent_articles_paginated
 from app.utils.date_utils import get_cutoff_timestamp
 
 NEWS_CATEGORIES = [
@@ -13,6 +14,20 @@ NEWS_CATEGORIES = [
     "Politics",
     "Science",
 ]
+
+
+def _serialize_article(article: Any) -> Dict[str, Any]:
+    """Serializes an ArticleModel row into the API response dictionary."""
+    return {
+        "article_id": article.article_id,
+        "title": article.title,
+        "summary": article.summary,
+        "publisher": article.publisher,
+        "category": article.category,
+        "published_at": article.published_at.isoformat(),
+        "article_url": article.article_url,
+        "image_url": article.image_url,
+    }
 
 
 def get_recent_news(
@@ -35,19 +50,37 @@ def get_recent_news(
         "total": len(articles),
         "limit": limit,
         "offset": offset,
-        "articles": [
-            {
-                "article_id": a.article_id,
-                "title": a.title,
-                "summary": a.summary,
-                "publisher": a.publisher,
-                "category": a.category,
-                "published_at": a.published_at.isoformat(),
-                "article_url": a.article_url,
-                "image_url": a.image_url,
-            }
-            for a in articles
-        ],
+        "articles": [_serialize_article(a) for a in articles],
+    }
+
+
+def get_trending_news(
+    db: Session,
+    page: int = 1,
+    page_size: int = 8,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Fetches paginated recent news articles (default 8 per page) within the retention window."""
+    cutoff = get_cutoff_timestamp(retention_days=settings.RETENTION_DAYS)
+    articles, total_items = get_recent_articles_paginated(
+        db=db,
+        cutoff_timestamp=cutoff,
+        page=page,
+        page_size=page_size,
+        category=category,
+        search=search,
+    )
+    total_pages = ceil(total_items / page_size) if total_items > 0 else 0
+
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1 and total_pages > 0,
+        "articles": [_serialize_article(a) for a in articles],
     }
 
 

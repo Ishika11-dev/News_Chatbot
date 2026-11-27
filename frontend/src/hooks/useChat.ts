@@ -6,8 +6,7 @@ import {
   getSavedSessions,
   persistSessions,
 } from "../services/historyService";
-import { fetchRecentNews } from "../services/newsService";
-import type { ChatMessage, ChatSession, TrendingArticle } from "../types/chat";
+import type { ChatMessage, ChatSession } from "../types/chat";
 
 // Bulletproof UUID generator that never fails in insecure origins or older web views
 const generateUUID = (): string => {
@@ -26,31 +25,10 @@ export function useChat() {
   const [loading, setLoading] = useState<boolean>(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [trendingNews, setTrendingNews] = useState<TrendingArticle[]>([]);
 
   // Load saved sessions on mount
   useEffect(() => {
     setSessions(getSavedSessions());
-  }, []);
-
-  // Load trending news on mount & provide refresh helper
-  const refreshTrendingNews = useCallback(async () => {
-    const articles = await fetchRecentNews(8);
-    if (articles && articles.length > 0) {
-      setTrendingNews(articles);
-    }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    fetchRecentNews(8).then((articles) => {
-      if (mounted && articles && articles.length > 0) {
-        setTrendingNews(articles);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   // Start a new chat
@@ -186,8 +164,6 @@ export function useChat() {
     loading,
     currentSessionId,
     sessions,
-    trendingNews,
-    refreshTrendingNews,
     sendMessage,
     startNewChat,
     selectSession,

@@ -39,3 +39,13 @@ export interface TrendingArticle {
   article_url?: string;
   image_url?: string;
 }
+
+export interface PaginatedTrendingResponse {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+  articles: TrendingArticle[];
+}

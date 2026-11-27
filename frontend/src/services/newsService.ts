@@ -1,5 +1,8 @@
 import axios from "axios";
-import type { TrendingArticle } from "../types/chat";
+import type {
+  PaginatedTrendingResponse,
+  TrendingArticle,
+} from "../types/chat";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -60,5 +63,29 @@ export const fetchRecentNews = async (
     console.warn("Could not fetch recent news from backend, using preview items:", error);
     return FALLBACK_ARTICLES;
   }
+};
+
+export const fetchTrendingNewsPage = async (
+  page: number = 1,
+  pageSize: number = 8,
+  category: string | null = null,
+  search: string = ""
+): Promise<PaginatedTrendingResponse> => {
+  const params: Record<string, string | number> = {
+    page,
+    page_size: pageSize,
+  };
+  if (category && category !== "All") {
+    params.category = category;
+  }
+  if (search.trim()) {
+    params.search = search.trim();
+  }
+
+  const response = await axios.get<PaginatedTrendingResponse>(
+    `${API_BASE_URL}/api/news/trending`,
+    { params }
+  );
+  return response.data;
 };
 
