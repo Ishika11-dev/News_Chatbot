@@ -39,7 +39,11 @@ class NewsSchedulerManager:
             retention_days=settings.RETENTION_DAYS
         )
 
-    def run_ingestion_pipeline(self, max_articles: Optional[int] = None) -> IngestionStats:
+    def run_ingestion_pipeline(
+        self,
+        max_articles: Optional[int] = None,
+        categories: Optional[List[str]] = None,
+    ) -> IngestionStats:
         """
         Executes full news extraction, deduplication, LangChain chunking,
         vector storage in Qdrant, and metadata persistence in the relational DB.
@@ -47,7 +51,8 @@ class NewsSchedulerManager:
         start_time = time.time()
         logger.info("--- Starting Scheduled LangChain News Ingestion Pipeline ---")
 
-        stats = IngestionStats(total_feeds=len(self.ingestor.load_feed_configs()))
+        selected_feeds = self.ingestor.load_feed_configs(categories=categories)
+        stats = IngestionStats(total_feeds=len(selected_feeds))
         db = SessionLocal()
 
         try:
@@ -55,7 +60,10 @@ class NewsSchedulerManager:
             existing_ids: Set[str] = get_existing_article_ids(db)
 
             # 2. Extract and clean articles strictly within 30-day window
-            parent_docs = self.ingestor.fetch_articles_as_documents(seen_ids=existing_ids)
+            parent_docs = self.ingestor.fetch_articles_as_documents(
+                seen_ids=existing_ids,
+                categories=categories,
+            )
             stats.total_fetched = len(parent_docs)
 
             if not parent_docs:

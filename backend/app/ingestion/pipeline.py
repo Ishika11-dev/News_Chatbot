@@ -34,20 +34,35 @@ class NewsIngestionPipeline:
         self.chunker = ArticleChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.text_splitter = self.chunker.text_splitter
 
-    def load_feed_configs(self) -> List[Dict[str, Any]]:
-        """Returns loaded feed configurations from feeds.yaml."""
-        return self.fetcher.load_feed_configs()
+    def load_feed_configs(self, categories: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Returns loaded feed configurations from feeds.yaml, optionally filtered by category."""
+        feeds = self.fetcher.load_feed_configs()
+        if not categories:
+            return feeds
 
-    def fetch_articles_as_documents(self, seen_ids: Optional[Set[str]] = None) -> List[Document]:
+        allowed = {c.strip().lower() for c in categories if c and c.strip()}
+        if not allowed or "all" in allowed:
+            return feeds
+
+        return [
+            f for f in feeds
+            if (f.get("category") or "").strip().lower() in allowed
+        ]
+
+    def fetch_articles_as_documents(
+        self,
+        seen_ids: Optional[Set[str]] = None,
+        categories: Optional[List[str]] = None,
+    ) -> List[Document]:
         """
-        Fetches all configured feeds, extracts valid articles within the 30-day retention window,
-        deduplicates them, and wraps them into LangChain Document instances.
+        Fetches configured feeds (optionally filtered by categories), extracts valid articles
+        within the 30-day retention window, deduplicates them, and wraps them into LangChain Documents.
 
         CRITICAL: Articles with missing or invalid publication dates are dropped and
         never automatically treated as current news.
         """
         dedup = ArticleDeduplicator(seen_ids=seen_ids)
-        feeds = self.load_feed_configs()
+        feeds = self.load_feed_configs(categories=categories)
         documents: List[Document] = []
 
         for feed in feeds:

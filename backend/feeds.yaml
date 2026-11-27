@@ -62,3 +62,27 @@ feeds:
     publisher: "Phys.org"
     language: "en"
 
+  # Sports
+  - name: "BBC Sport"
+    url: "https://feeds.bbci.co.uk/sport/rss.xml"
+    category: "Sports"
+    publisher: "BBC Sport"
+    language: "en"
+  - name: "ESPN"
+    url: "https://www.espn.com/espn/rss/news"
+    category: "Sports"
+    publisher: "ESPN"
+    language: "en"
+
+  # Entertainment
+  - name: "BBC Entertainment & Arts"
+    url: "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"
+    category: "Entertainment"
+    publisher: "BBC News"
+    language: "en"
+  - name: "Variety"
+    url: "https://variety.com/feed/"
+    category: "Entertainment"
+    publisher: "Variety"
+    language: "en"
+

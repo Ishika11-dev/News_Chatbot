@@ -13,6 +13,8 @@ export const DEFAULT_NEWS_CATEGORIES: string[] = [
   "World News",
   "Politics",
   "Science",
+  "Sports",
+  "Entertainment",
 ];
 
 const FALLBACK_ARTICLES: TrendingArticle[] = [

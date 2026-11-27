@@ -1,11 +1,13 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Union
 
 from app.services import admin_service
 
 
-def handle_trigger_ingestion() -> Dict[str, Any]:
+def handle_trigger_ingestion(
+    categories: Optional[Union[str, List[str]]] = None,
+) -> Dict[str, Any]:
     """Handles manual news ingestion trigger requests."""
-    return admin_service.trigger_ingestion()
+    return admin_service.trigger_ingestion(categories=categories)
 
 
 def handle_trigger_cleanup() -> Dict[str, Any]:

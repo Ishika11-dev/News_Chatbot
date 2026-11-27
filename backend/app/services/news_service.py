@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.crud import get_recent_articles, get_recent_articles_paginated
+from app.ingestion.feed_fetcher import FeedFetcher
 from app.utils.date_utils import get_cutoff_timestamp
 
 NEWS_CATEGORIES = [
@@ -13,6 +14,8 @@ NEWS_CATEGORIES = [
     "World News",
     "Politics",
     "Science",
+    "Sports",
+    "Entertainment",
 ]
 
 
@@ -85,6 +88,16 @@ def get_trending_news(
 
 
 def get_news_categories() -> List[str]:
-    """Returns supported news categories."""
-    return list(NEWS_CATEGORIES)
+    """Returns supported news categories derived from feeds.yaml (with fallback)."""
+    feeds = FeedFetcher(config_path=settings.FEEDS_CONFIG_PATH).load_feed_configs()
+    if not feeds:
+        return list(NEWS_CATEGORIES)
+
+    categories: List[str] = ["All"]
+    for feed in feeds:
+        cat = (feed.get("category") or "").strip()
+        if cat and cat not in categories:
+            categories.append(cat)
+
+    return categories if len(categories) > 1 else list(NEWS_CATEGORIES)
 

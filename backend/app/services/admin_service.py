@@ -1,14 +1,37 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Union
 
 from app.core.scheduler import scheduler_manager
 
 
-def trigger_ingestion() -> Dict[str, Any]:
-    """Manually runs the news ingestion pipeline and returns status metadata."""
-    stats = scheduler_manager.run_ingestion_pipeline()
+def _normalize_categories(
+    categories: Optional[Union[str, List[str]]],
+) -> Optional[List[str]]:
+    """Normalizes a single/comma-separated string or list of category names."""
+    if not categories:
+        return None
+    items = [categories] if isinstance(categories, str) else categories
+    parsed: List[str] = []
+    for item in items:
+        for part in item.split(","):
+            cleaned = part.strip()
+            if cleaned:
+                parsed.append(cleaned)
+    return parsed or None
+
+
+def trigger_ingestion(
+    categories: Optional[Union[str, List[str]]] = None,
+) -> Dict[str, Any]:
+    """Manually runs the news ingestion pipeline (optionally scoped to categories)."""
+    normalized = _normalize_categories(categories)
+    stats = scheduler_manager.run_ingestion_pipeline(categories=normalized)
     return {
         "status": "COMPLETED",
-        "message": "Manual ingestion finished.",
+        "message": (
+            f"Manual ingestion finished for categories: {', '.join(normalized)}."
+            if normalized
+            else "Manual ingestion finished."
+        ),
         "stats": stats,
     }
 
